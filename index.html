@@ -293,17 +293,45 @@
         this.updateSummary();
       }
 
-      deleteChild(id) {
-        if (!confirm('Supprimer définitivement cet enfant ?')) return;
-        let children = JSON.parse(localStorage.getItem('children') || '[]');
-        children = children.filter(c => c.id !== id);
-        localStorage.setItem('children', JSON.stringify(children));
-        if (this.currentChildId === id) {
-          this.currentChildId = '';
-          localStorage.removeItem('currentChildId');
-        }
-        this.syncAndMergeChildren();
-      }
+      
+// Fonction deleteChild mise à jour
+
+  async deleteChild(id) {
+  if (!confirm('Supprimer définitivement cet enfant ?')) return;
+
+  // Supprime localement
+  let children = JSON.parse(localStorage.getItem('children') || '[]');
+  children = children.filter(c => c.id !== id);
+  localStorage.setItem('children', JSON.stringify(children));
+
+  // Supprime dans Redis
+  if (navigator.onLine) {
+    try {
+      await fetch('/api/suivi-bebe/children', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      console.log('Enfant supprimé de Redis:', id);
+    } catch (e) {
+      console.error('Erreur suppression Redis:', e);
+    }
+  }
+
+  // Si l'enfant supprimé était sélectionné, le désélectionne
+  if (this.currentChildId === id) {
+    this.currentChildId = '';
+    localStorage.removeItem('currentChildId');
+  }
+
+  // Recharge la liste
+  await this.syncAndMergeChildren();
+  this.updateHeader();
+  this.loadDayEvents();
+  this.renderCards();
+  this.updateSummary();
+}
+
 
       updateHeader() {
         const children = JSON.parse(localStorage.getItem('children') || '[]');

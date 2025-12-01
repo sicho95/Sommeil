@@ -96,7 +96,7 @@
             <input type="radio" name="theme" value="auto" checked>
             🔄 Automatique (OS)
           </label>
-          <p class="theme-hint">Le thème est synchronisé entre tes appareils</p>
+          <p class="theme-hint">Le thème s'adapte à tes préférences système</p>
         </div>
       </div>
 
@@ -142,10 +142,10 @@
         this.updateHeader();
         this.applyTheme();
         this.updateSummary();
+        this.setupThemeListener();
       }
 
       bindEvents() {
-        // Onglets
         document.querySelectorAll('.tab-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             document.querySelector('.tab-btn.active').classList.remove('active');
@@ -155,33 +155,27 @@
           });
         });
 
-        // Navigation dates
         document.getElementById('prev-day').onclick = () => this.changeDay(-1);
         document.getElementById('next-day').onclick = () => this.changeDay(1);
         document.getElementById('today-btn').onclick = () => this.setToday();
 
-        // Enfant
         document.getElementById('add-child-btn').onclick = () => {
           document.querySelector('.tab-btn[data-tab="settings"]').click();
         };
 
-        // Formulaire enfant
         document.getElementById('child-form').onsubmit = (e) => {
           e.preventDefault();
           this.addChild();
         };
 
-        // Modal
         document.getElementById('modal-cancel').onclick = () => this.closeModal();
         document.getElementById('modal-save').onclick = () => this.saveEvent();
 
-        // Paramètres
         document.querySelectorAll('input[name="theme"]').forEach(radio => {
           radio.addEventListener('change', event => this.setTheme(event.target.value));
         });
         document.getElementById('sync-btn').onclick = () => this.syncAll();
 
-        // Date picker
         const dateLabel = document.getElementById('currentDateLabel');
         dateLabel.style.cursor = 'pointer';
         dateLabel.title = 'Cliquer pour choisir une date';
@@ -189,7 +183,8 @@
       }
 
       async syncAndMergeChildren() {
-        const localChildren = JSON.parse(localStorage.getItem('children') || '[]');
+        let localChildren = JSON.parse(localStorage.getItem('children') || '[]');
+        let remoteChildren = [];
 
         if (navigator.onLine) {
           try {
@@ -197,26 +192,29 @@
             if (res.ok) {
               const data = await res.json();
               if (data.ok && Array.isArray(data.data)) {
-                const combined = [...localChildren];
-                const localIds = new Set(localChildren.map(c => c.id));
-                data.data.forEach(remoteChild => {
-                  if (!localIds.has(remoteChild.id)) combined.push(remoteChild);
-                });
-                localStorage.setItem('children', JSON.stringify(combined));
-                this.renderChildrenSelect(combined);
-                this.renderChildrenList(combined);
-                this.updateHeader();
-                this.loadDayEvents();
-                this.renderCards();
-                this.updateSummary();
-                return;
+                remoteChildren = data.data;
               }
             }
-          } catch {}
+          } catch (e) {
+            console.error('Erreur sync enfants:', e);
+          }
         }
 
-        this.renderChildrenSelect(localChildren);
-        this.renderChildrenList(localChildren);
+        // Fusion vraie : tous les enfants Redis + locaux sans doublons (par id)
+        const ids = new Set(localChildren.map(c => c.id));
+        let merged = [...localChildren];
+        remoteChildren.forEach(c => {
+          if (!ids.has(c.id)) merged.push(c);
+        });
+
+        // Si Redis avait plus d'enfants, on les ajoute
+        localStorage.setItem('children', JSON.stringify(merged));
+        
+        this.renderChildrenSelect(merged);
+        this.renderChildrenList(merged);
+        
+        localStorage.setItem('lastSync', new Date().toISOString());
+        document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
       }
 
       renderChildrenSelect(children) {
@@ -247,7 +245,7 @@
       renderChildrenList(children) {
         const container = document.getElementById('children-list');
         if (!children.length) {
-          container.innerHTML = '<p>Aucun enfant. Ajoute-en un !</p>';
+          container.innerHTML = '<p class="empty-state">Aucun enfant. Ajoute-en un !</p>';
           return;
         }
         container.innerHTML = children.map(child => `
@@ -259,6 +257,40 @@
             <button class="btn-danger" onclick="app.deleteChild('${child.id}')">×</button>
           </div>
         `).join('');
+      }
+
+      async addChild() {
+        const name = document.getElementById('child-name').value.trim();
+        const age = parseInt(document.getElementById('child-age').value) || 0;
+        if (!name) return;
+
+        const child = { id: Date.now().toString(), name, age };
+        let children = JSON.parse(localStorage.getItem('children') || '[]');
+        children.push(child);
+        localStorage.setItem('children', JSON.stringify(children));
+
+        if (navigator.onLine) {
+          try {
+            await fetch('/api/suivi-bebe/children', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(child)
+            });
+          } catch {}
+        }
+
+        document.getElementById('child-name').value = '';
+        document.getElementById('child-age').value = '';
+
+        this.currentChildId = child.id;
+        localStorage.setItem('currentChildId', this.currentChildId);
+        
+        // Force re-sync après ajout
+        await this.syncAndMergeChildren();
+        this.updateHeader();
+        this.loadDayEvents();
+        this.renderCards();
+        this.updateSummary();
       }
 
       deleteChild(id) {
@@ -314,15 +346,16 @@
         input.style.top = '-100px';
         document.body.appendChild(input);
         input.focus();
+        input.click();
         input.onchange = (e) => {
-          this.currentDate = new Date(e.target.value);
+          this.currentDate = new Date(e.target.value + 'T12:00:00');
           this.renderDate();
           this.loadDayEvents();
           this.renderCards();
           this.updateSummary();
           input.remove();
         };
-        input.onblur = () => input.remove();
+        input.onblur = () => setTimeout(() => input.remove(), 100);
       }
 
       loadDayEvents() {
@@ -511,38 +544,10 @@
         else badge.textContent = '🔴 Médiocre';
       }
 
-      addChild() {
-        const name = document.getElementById('child-name').value.trim();
-        const age = parseInt(document.getElementById('child-age').value) || 0;
-        if (!name) return;
-
-        const child = { id: Date.now().toString(), name, age };
-        let children = JSON.parse(localStorage.getItem('children') || '[]');
-        children.push(child);
-        localStorage.setItem('children', JSON.stringify(children));
-
-        if (navigator.onLine) {
-          fetch('/api/suivi-bebe/children', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(child)
-          }).catch(() => {});
-        }
-
-        document.getElementById('child-name').value = '';
-        document.getElementById('child-age').value = '';
-
-        this.currentChildId = child.id;
-        localStorage.setItem('currentChildId', this.currentChildId);
-        this.syncAndMergeChildren();
-      }
-
-      syncAll() {
-        this.syncAndMergeChildren();
+      async syncAll() {
+        await this.syncAndMergeChildren();
         this.loadDayEvents();
         this.syncDayRemote();
-        document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
-        localStorage.setItem('lastSync', new Date().toISOString());
       }
 
       setTheme(theme) {
@@ -559,6 +564,12 @@
         document.documentElement.setAttribute('data-theme', themeToApply);
         const radio = document.querySelector(`input[name="theme"][value="${this.theme}"]`);
         if (radio) radio.checked = true;
+      }
+
+      setupThemeListener() {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          if (this.theme === 'auto') this.applyTheme();
+        });
       }
     }
 

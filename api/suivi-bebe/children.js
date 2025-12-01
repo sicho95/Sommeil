@@ -1,4 +1,4 @@
-const { createClient } = require('redis');
+import { createClient } from 'redis';
 
 module.exports = async function (req, res) {
   const client = createClient({ url: process.env.REDIS_URL });

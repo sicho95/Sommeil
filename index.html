@@ -1,607 +1,75 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8" />
-  <title>Suivi sommeil bébé</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#f0f4ff">
-  <link rel="stylesheet" href="css/main.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sommeil Bébé</title>
+  <link rel="manifest" href="manifest.json">
+  <script>
+    // Chargement SYNCHRONE thème avant DOM (1 seule ligne)
+    const prefs = JSON.parse(localStorage.getItem('sommeil_prefs') || '{}');
+    document.documentElement.setAttribute('data-theme', prefs.theme || 'auto');
+  </script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="app-root">
-    <!-- HEADER ENFANT + DATE -->
-    <header class="app-header">
-      <div class="header-top">
-        <div class="child-select-wrapper">
-          <select id="child-select" class="child-select">
-            <option value="">Aucun enfant</option>
-          </select>
-          <button id="add-child-btn" class="icon-button" aria-label="Ajouter">＋</button>
-        </div>
-      </div>
-      <div class="header-bottom">
-        <span class="header-child-name" id="currentChildName">Sélectionne un enfant</span>
-        <span class="header-date" id="currentDateLabel">Chargement...</span>
-      </div>
-    </header>
+  <!-- Sélecteur Enfant -->
+  <select id="childSelect">
+    <option value="default">Bébé 1</option>
+  </select>
 
-    <!-- TABS -->
-    <nav class="tab-bar">
-      <button class="tab-btn active" data-tab="day">Jour</button>
-      <button class="tab-btn" data-tab="summary">Synthèse</button>
-      <button class="tab-btn" data-tab="settings">Paramètres</button>
-    </nav>
+  <!-- Écran Jour -->
+  <div id="dayScreen" class="day-container">
+    <div class="calendar-nav">
+      <button id="prevDay">←</button>
+      <span id="currentDate"></span>
+      <button id="nextDay">→</button>
+    </div>
 
-    <!-- JOUR -->
-    <section class="tab-content active" id="tab-day">
-      <div class="date-nav">
-        <button id="prev-day" class="nav-btn" title="Jour précédent">◀</button>
-        <span id="date-display" class="date-display"></span>
-        <button id="today-btn" class="nav-btn today-btn" title="Aujourd'hui">🏠</button>
-        <button id="next-day" class="nav-btn" title="Jour suivant">▶</button>
+    <!-- Cartes avec Sliders "Aucune" -->
+    <div class="cards">
+      <div class="card coucher">
+        <h3>Coucher</h3>
+        <input type="time" id="bedtime">
       </div>
-      <div id="cards-container" class="cards-grid"></div>
-    </section>
-
-    <!-- SYNTHÈSE -->
-    <section class="tab-content" id="tab-summary">
-      <div class="summary-grid">
-        <div class="summary-card total">
-          <div class="summary-value" id="total-sleep">--h --m</div>
-          <div class="summary-label">Sommeil total</div>
-        </div>
-        <div class="summary-card night">
-          <div class="summary-value" id="night-sleep">--h --m</div>
-          <div class="summary-label">Nuit</div>
-        </div>
-        <div class="summary-card naps">
-          <div class="summary-value" id="naps-sleep">--h --m</div>
-          <div class="summary-label">Siestes</div>
-        </div>
-        <div class="summary-card quality">
-          <div class="quality-badge" id="quality-badge">–</div>
-          <div class="summary-label">Qualité nuit</div>
-        </div>
-      </div>
-    </section>
-
-    <!-- PARAMÈTRES -->
-    <section class="tab-content" id="tab-settings">
-      <div class="settings-section">
-        <h2>👶 Gestion des enfants</h2>
-        <div class="children-list" id="children-list"></div>
-        <form id="child-form" class="form-card">
-          <input type="text" id="child-name" placeholder="Nom de l'enfant *" required>
-          <input type="number" id="child-age" placeholder="Âge (mois)" min="0" max="60">
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Ajouter enfant</button>
-            <button type="button" class="btn-secondary" id="child-cancel">Annuler</button>
-          </div>
-        </form>
+      
+      <div class="card reveils">
+        <h3>Réveils Nocturnes</h3>
+        <label class="toggle-slider">
+          <input type="checkbox" id="noWakes">
+          <span class="slider">Aucune</span>
+        </label>
+        <input type="number" id="wakeCount" style="display:none">
       </div>
 
-      <div class="settings-section">
-        <h2>🎨 Apparence</h2>
-        <div class="theme-selector form-card">
-          <label class="theme-option">
-            <input type="radio" name="theme" value="light">
-            ☀️ Thème clair
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme" value="dark">
-            🌙 Thème sombre
-          </label>
-          <label class="theme-option">
-            <input type="radio" name="theme" value="auto" checked>
-            🔄 Automatique (OS)
-          </label>
-          <p class="theme-hint">Le thème s'adapte à tes préférences système</p>
-        </div>
+      <div class="card siestes">
+        <h3>Siestes</h3>
+        <label class="toggle-slider">
+          <input type="checkbox" id="noNaps">
+          <span class="slider">Aucune</span>
+        </label>
+        <input type="number" id="napCount" style="display:none">
+        <input type="time" id="napDuration" style="display:none">
       </div>
 
-      <div class="settings-section">
-        <h2>🔄 Synchronisation</h2>
-        <button id="sync-btn" class="btn-primary full-width">Forcer synchronisation Redis</button>
-        <p class="sync-status" id="sync-status">Dernière sync : jamais</p>
-      </div>
-    </section>
-  </div>
-
-  <!-- MODAL ÉVÉNEMENTS -->
-  <div id="modal" class="modal">
-    <div class="modal-backdrop"></div>
-    <div class="modal-content">
-      <h3 id="modal-title"></h3>
-      <div id="modal-body"></div>
-      <div class="modal-actions">
-        <button id="modal-cancel" class="btn-secondary">Annuler</button>
-        <button id="modal-save" class="btn-primary">Sauvegarder</button>
+      <div class="card repas">
+        <h3>Repas</h3>
+        <select id="mealQuality">
+          <option>Bien</option><option>Peu</option><option>Rien</option>
+        </select>
       </div>
     </div>
+
+    <!-- Stats Tabs -->
+    <div class="stats-tabs">
+      <button class="tab active" data-period="day">Jour</button>
+      <button class="tab" data-period="week">Semaine</button>
+      <button class="tab" data-period="month">Mois</button>
+    </div>
+    <div id="statsDisplay"></div>
   </div>
 
-  <script>
-    class SuiviBebe {
-      constructor() {
-        this.currentChildId = localStorage.getItem('currentChildId') || '';
-        this.currentDate = new Date();
-        this.events = {};
-        this.currentEventType = null;
-        this.theme = localStorage.getItem('theme') || 'auto';
-        this.lastSync = localStorage.getItem('lastSync') || null;
-        this.init();
-      }
-
-      async init() {
-        this.bindEvents();
-        this.renderDate();
-        await this.syncAndMergeChildren();
-        this.loadDayEvents();
-        this.renderCards();
-        this.updateHeader();
-        this.applyTheme();
-        this.updateSummary();
-        this.setupThemeListener();
-      }
-
-      bindEvents() {
-        document.querySelectorAll('.tab-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            document.querySelector('.tab-btn.active').classList.remove('active');
-            document.querySelector('.tab-content.active').classList.remove('active');
-            e.target.classList.add('active');
-            document.getElementById(`tab-${e.target.dataset.tab}`).classList.add('active');
-          });
-        });
-
-        document.getElementById('prev-day').onclick = () => this.changeDay(-1);
-        document.getElementById('next-day').onclick = () => this.changeDay(1);
-        document.getElementById('today-btn').onclick = () => this.setToday();
-
-        document.getElementById('add-child-btn').onclick = () => {
-          document.querySelector('.tab-btn[data-tab="settings"]').click();
-        };
-
-        document.getElementById('child-form').onsubmit = (e) => {
-          e.preventDefault();
-          this.addChild();
-        };
-
-        document.getElementById('modal-cancel').onclick = () => this.closeModal();
-        document.getElementById('modal-save').onclick = () => this.saveEvent();
-
-        document.querySelectorAll('input[name="theme"]').forEach(radio => {
-          radio.addEventListener('change', event => this.setTheme(event.target.value));
-        });
-        document.getElementById('sync-btn').onclick = () => this.syncAll();
-
-        const dateLabel = document.getElementById('currentDateLabel');
-        dateLabel.style.cursor = 'pointer';
-        dateLabel.title = 'Cliquer pour choisir une date';
-        dateLabel.onclick = () => this.openDatePicker();
-      }
-
-      async syncAndMergeChildren() {
-        let localChildren = JSON.parse(localStorage.getItem('children') || '[]');
-        let remoteChildren = [];
-
-        if (navigator.onLine) {
-          try {
-            const res = await fetch('/api/suivi-bebe/children');
-            if (res.ok) {
-              const data = await res.json();
-              if (data.ok && Array.isArray(data.data)) {
-                remoteChildren = data.data;
-              }
-            }
-          } catch (e) {
-            console.error('Erreur sync enfants:', e);
-          }
-        }
-
-        // Fusion vraie : tous les enfants Redis + locaux sans doublons (par id)
-        const ids = new Set(localChildren.map(c => c.id));
-        let merged = [...localChildren];
-        remoteChildren.forEach(c => {
-          if (!ids.has(c.id)) merged.push(c);
-        });
-
-        // Si Redis avait plus d'enfants, on les ajoute
-        localStorage.setItem('children', JSON.stringify(merged));
-        
-        this.renderChildrenSelect(merged);
-        this.renderChildrenList(merged);
-        
-        localStorage.setItem('lastSync', new Date().toISOString());
-        document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
-      }
-
-      renderChildrenSelect(children) {
-        const select = document.getElementById('child-select');
-        select.innerHTML = '<option value="">Aucun enfant</option>';
-        children.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c.id;
-          opt.textContent = `${c.name} (${c.age || 0} mois)`;
-          select.appendChild(opt);
-        });
-
-        if (!this.currentChildId && children.length > 0) {
-          this.currentChildId = children[0].id;
-          localStorage.setItem('currentChildId', this.currentChildId);
-        }
-        select.value = this.currentChildId;
-        select.onchange = (e) => {
-          this.currentChildId = e.target.value;
-          localStorage.setItem('currentChildId', this.currentChildId);
-          this.updateHeader();
-          this.loadDayEvents();
-          this.renderCards();
-          this.updateSummary();
-        };
-      }
-
-      renderChildrenList(children) {
-        const container = document.getElementById('children-list');
-        if (!children.length) {
-          container.innerHTML = '<p class="empty-state">Aucun enfant. Ajoute-en un !</p>';
-          return;
-        }
-        container.innerHTML = children.map(child => `
-          <div class="child-item">
-            <div>
-              <strong>${child.name}</strong>
-              <span class="child-age">${child.age || 0} mois</span>
-            </div>
-            <button class="btn-danger" onclick="app.deleteChild('${child.id}')">×</button>
-          </div>
-        `).join('');
-      }
-
-      async addChild() {
-        const name = document.getElementById('child-name').value.trim();
-        const age = parseInt(document.getElementById('child-age').value) || 0;
-        if (!name) return;
-
-        const child = { id: Date.now().toString(), name, age };
-        let children = JSON.parse(localStorage.getItem('children') || '[]');
-        children.push(child);
-        localStorage.setItem('children', JSON.stringify(children));
-
-        if (navigator.onLine) {
-          try {
-            await fetch('/api/suivi-bebe/children', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(child)
-            });
-          } catch {}
-        }
-
-        document.getElementById('child-name').value = '';
-        document.getElementById('child-age').value = '';
-
-        this.currentChildId = child.id;
-        localStorage.setItem('currentChildId', this.currentChildId);
-        
-        // Force re-sync après ajout
-        await this.syncAndMergeChildren();
-        this.updateHeader();
-        this.loadDayEvents();
-        this.renderCards();
-        this.updateSummary();
-      }
-
-      
-// Fonction deleteChild mise à jour
-
-  async deleteChild(id) {
-  if (!confirm('Supprimer définitivement cet enfant ?')) return;
-
-  // Supprime localement
-  let children = JSON.parse(localStorage.getItem('children') || '[]');
-  children = children.filter(c => c.id !== id);
-  localStorage.setItem('children', JSON.stringify(children));
-
-  // Supprime dans Redis
-  if (navigator.onLine) {
-    try {
-      await fetch('/api/suivi-bebe/children', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      });
-      console.log('Enfant supprimé de Redis:', id);
-    } catch (e) {
-      console.error('Erreur suppression Redis:', e);
-    }
-  }
-
-  // Si l'enfant supprimé était sélectionné, le désélectionne
-  if (this.currentChildId === id) {
-    this.currentChildId = '';
-    localStorage.removeItem('currentChildId');
-  }
-
-  // Recharge la liste
-  await this.syncAndMergeChildren();
-  this.updateHeader();
-  this.loadDayEvents();
-  this.renderCards();
-  this.updateSummary();
-}
-
-
-      updateHeader() {
-        const children = JSON.parse(localStorage.getItem('children') || '[]');
-        const child = children.find(c => c.id === this.currentChildId);
-        document.getElementById('currentChildName').textContent = child ? child.name : 'Aucun enfant';
-      }
-
-      setToday() {
-        this.currentDate = new Date();
-        this.renderDate();
-        this.loadDayEvents();
-        this.renderCards();
-        this.updateSummary();
-      }
-
-      changeDay(delta) {
-        this.currentDate.setDate(this.currentDate.getDate() + delta);
-        this.renderDate();
-        this.loadDayEvents();
-        this.renderCards();
-        this.updateSummary();
-      }
-
-      renderDate() {
-        const full = this.currentDate.toLocaleDateString('fr-FR', {
-          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-        });
-        const short = this.currentDate.toLocaleDateString('fr-FR', {
-          weekday: 'long', day: 'numeric', month: 'long'
-        });
-        document.getElementById('date-display').textContent = full;
-        document.getElementById('currentDateLabel').textContent = short;
-      }
-
-      openDatePicker() {
-        let input = document.createElement('input');
-        input.type = 'date';
-        input.value = this.currentDate.toISOString().slice(0,10);
-        input.style.position = 'fixed';
-        input.style.top = '-100px';
-        document.body.appendChild(input);
-        input.focus();
-        input.click();
-        input.onchange = (e) => {
-          this.currentDate = new Date(e.target.value + 'T12:00:00');
-          this.renderDate();
-          this.loadDayEvents();
-          this.renderCards();
-          this.updateSummary();
-          input.remove();
-        };
-        input.onblur = () => setTimeout(() => input.remove(), 100);
-      }
-
-      loadDayEvents() {
-        if (!this.currentChildId) {
-          this.events = {};
-          return;
-        }
-        const dateKey = this.currentDate.toISOString().slice(0, 10);
-        const key = `day_${this.currentChildId}_${dateKey}`;
-        const saved = localStorage.getItem(key);
-        this.events = saved ? JSON.parse(saved) : {};
-
-        if (navigator.onLine) {
-          fetch(`/api/suivi-bebe/day?childId=${encodeURIComponent(this.currentChildId)}&date=${encodeURIComponent(dateKey)}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-              if (data && data.ok && data.data && data.data.events) {
-                this.events = data.data.events;
-                this.saveDayLocal();
-                this.renderCards();
-                this.updateSummary();
-              }
-            })
-            .catch(() => {});
-        }
-      }
-
-      saveDayLocal() {
-        if (!this.currentChildId) return;
-        const dateKey = this.currentDate.toISOString().slice(0, 10);
-        const key = `day_${this.currentChildId}_${dateKey}`;
-        localStorage.setItem(key, JSON.stringify(this.events));
-      }
-
-      syncDayRemote() {
-        if (!navigator.onLine || !this.currentChildId) return;
-        const dateKey = this.currentDate.toISOString().slice(0, 10);
-        fetch('/api/suivi-bebe/day', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            childId: this.currentChildId,
-            date: dateKey,
-            events: this.events
-          })
-        }).catch(() => {});
-      }
-
-      renderCards() {
-        const cards = [
-          { id: 'coucher',      title: 'Coucher soir',         color: 'blue'   },
-          { id: 'reveils',      title: 'Réveils nuit',        color: 'purple' },
-          { id: 'reveil-matin', title: 'Réveil matin',        color: 'orange' },
-          { id: 'sieste-matin', title: 'Sieste matin',        color: 'mint'   },
-          { id: 'sieste-aprem', title: 'Sieste après-midi',   color: 'teal'   },
-          { id: 'repas',        title: 'Repas',               color: 'pink'   }
-        ];
-        const c = document.getElementById('cards-container');
-        c.innerHTML = cards.map(card => {
-          const e = this.events[card.id] || {};
-          let details = '';
-          if (card.id === 'reveils' && e.count) {
-            details = `${e.count} réveils ${e.notes || ''}`;
-          } else if (card.id === 'repas' && e.meal) {
-            const map = { bien: 'Bien mangé', peu: 'Peu mangé', rien: 'Rien mangé' };
-            details = `${map[e.meal] || ''} ${e.notes || ''}`.trim();
-          } else {
-            details = e.notes || '';
-          }
-          return `
-            <div class="event-card ${card.color}" onclick="app.openEventModal('${card.id}')">
-              <div class="card-title">${card.title}</div>
-              <div class="card-time">${e.time || 'Non renseigné'}</div>
-              <div class="card-details">${details}</div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      openEventModal(type) {
-        this.currentEventType = type;
-        const e = this.events[type] || {};
-        let body = '';
-
-        if (['coucher', 'reveil-matin', 'sieste-matin', 'sieste-aprem'].includes(type)) {
-          body += `
-            <div class="time-input">
-              <label>Heure</label>
-              <input type="time" id="event-time" value="${e.time || ''}">
-            </div>
-          `;
-        } else if (type === 'reveils') {
-          body += `
-            <div class="number-input">
-              <label>Nombre de réveils</label>
-              <input type="number" id="event-count" min="0" max="10" value="${e.count || ''}">
-            </div>
-            <div class="time-input">
-              <label>Heure moyenne</label>
-              <input type="time" id="event-time" value="${e.time || ''}">
-            </div>
-          `;
-        } else if (type === 'repas') {
-          body += `
-            <div class="segment-input">
-              <label>Quantité mangée</label>
-              <div class="segments">
-                <label><input type="radio" name="meal" value="bien" ${e.meal === 'bien' ? 'checked' : ''}> Bien</label>
-                <label><input type="radio" name="meal" value="peu" ${e.meal === 'peu' ? 'checked' : ''}> Peu</label>
-                <label><input type="radio" name="meal" value="rien" ${e.meal === 'rien' ? 'checked' : ''}> Rien</label>
-              </div>
-            </div>
-          `;
-        }
-
-        body += `
-          <div class="notes-input">
-            <label>Notes</label>
-            <textarea id="event-notes" placeholder="Commentaires...">${e.notes || ''}</textarea>
-          </div>
-        `;
-
-        document.getElementById('modal-title').textContent = `Événement : ${type.replace('-', ' ')}`;
-        document.getElementById('modal-body').innerHTML = body;
-        document.getElementById('modal').classList.add('active');
-      }
-
-      saveEvent() {
-        const e = {};
-        if (this.currentEventType === 'reveils') {
-          e.count = document.getElementById('event-count')?.value || '';
-          e.time = document.getElementById('event-time')?.value || '';
-        } else if (this.currentEventType === 'repas') {
-          e.meal = document.querySelector('input[name="meal"]:checked')?.value || '';
-        } else {
-          e.time = document.getElementById('event-time')?.value || '';
-        }
-        e.notes = document.getElementById('event-notes')?.value || '';
-        this.events[this.currentEventType] = e;
-
-        this.saveDayLocal();
-        this.syncDayRemote();
-        this.renderCards();
-        this.updateSummary();
-        this.closeModal();
-      }
-
-      closeModal() {
-        document.getElementById('modal').classList.remove('active');
-      }
-
-      updateSummary() {
-        let nightMinutes = 0;
-        let napsMinutes = 0;
-        const wakeups = parseInt(this.events.reveils?.count) || 0;
-
-        const fmt = (m) => {
-          const h = Math.floor(m / 60);
-          const mm = m % 60;
-          return `${h}h ${mm.toString().padStart(2, '0')}m`;
-        };
-
-        if (this.events.coucher?.time && this.events['reveil-matin']?.time) {
-          const [ch, cm] = this.events.coucher.time.split(':').map(Number);
-          const [rh, rm] = this.events['reveil-matin'].time.split(':').map(Number);
-          let start = ch * 60 + cm;
-          let end = rh * 60 + rm;
-          if (end <= start) end += 24 * 60;
-          nightMinutes = end - start;
-        }
-
-        ['sieste-matin', 'sieste-aprem'].forEach(id => {
-          if (this.events[id]?.time) {
-            napsMinutes += 90;
-          }
-        });
-
-        const total = nightMinutes + napsMinutes;
-        document.getElementById('night-sleep').textContent = fmt(nightMinutes);
-        document.getElementById('naps-sleep').textContent = fmt(napsMinutes);
-        document.getElementById('total-sleep').textContent = fmt(total);
-
-        const badge = document.getElementById('quality-badge');
-        if (wakeups === 0) badge.textContent = '🟢 Excellente';
-        else if (wakeups <= 2) badge.textContent = '🟡 Bonne';
-        else badge.textContent = '🔴 Médiocre';
-      }
-
-      async syncAll() {
-        await this.syncAndMergeChildren();
-        this.loadDayEvents();
-        this.syncDayRemote();
-      }
-
-      setTheme(theme) {
-        this.theme = theme;
-        localStorage.setItem('theme', theme);
-        this.applyTheme();
-      }
-
-      applyTheme() {
-        let themeToApply = this.theme;
-        if (this.theme === 'auto') {
-          themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-        }
-        document.documentElement.setAttribute('data-theme', themeToApply);
-        const radio = document.querySelector(`input[name="theme"][value="${this.theme}"]`);
-        if (radio) radio.checked = true;
-      }
-
-      setupThemeListener() {
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-          if (this.theme === 'auto') this.applyTheme();
-        });
-      }
-    }
-
-    const app = new SuiviBebe();
-  </script>
+  <!-- UNIQUEMENT CETTE LIGNE JS -->
+  <script src="app.js"></script>
 </body>
 </html>

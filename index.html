@@ -6,7 +6,7 @@
   <title>Sommeil Bébé</title>
   <link rel="manifest" href="manifest.json">
   <script>
-    // Chargement SYNCHRONE thème avant DOM (1 seule ligne)
+    // Charge le thème stocké avant l'affichage du DOM
     const prefs = JSON.parse(localStorage.getItem('sommeil_prefs') || '{}');
     document.documentElement.setAttribute('data-theme', prefs.theme || 'auto');
   </script>
@@ -55,7 +55,9 @@
       <div class="card repas">
         <h3>Repas</h3>
         <select id="mealQuality">
-          <option>Bien</option><option>Peu</option><option>Rien</option>
+          <option>Bien</option>
+          <option>Peu</option>
+          <option>Rien</option>
         </select>
       </div>
     </div>
@@ -69,7 +71,7 @@
     <div id="statsDisplay"></div>
   </div>
 
-  <!-- UNIQUEMENT CETTE LIGNE JS -->
+  <!-- Appel unique du JavaScript -->
   <script src="app.js"></script>
 </body>
 </html>

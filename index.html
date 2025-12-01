@@ -22,7 +22,7 @@
       </div>
       <div class="header-bottom">
         <span class="header-child-name" id="currentChildName">Sélectionne un enfant</span>
-        <span class="header-date" id="currentDateLabel"></span>
+        <span class="header-date" id="currentDateLabel">Chargement...</span>
       </div>
     </header>
 
@@ -30,16 +30,16 @@
     <nav class="tab-bar">
       <button class="tab-btn active" data-tab="day">Jour</button>
       <button class="tab-btn" data-tab="summary">Synthèse</button>
-      <button class="tab-btn" data-tab="settings">Enfants</button>
+      <button class="tab-btn" data-tab="settings">Paramètres</button>
     </nav>
 
     <!-- JOUR -->
     <section class="tab-content active" id="tab-day">
       <div class="date-nav">
-        <button id="prev-day" class="nav-btn">◀</button>
-        <span id="date-display"></span>
-        <button id="today-btn" class="nav-btn today-btn">Aujourd’hui</button>
-        <button id="next-day" class="nav-btn">▶</button>
+        <button id="prev-day" class="nav-btn" title="Jour précédent">◀</button>
+        <span id="date-display" class="date-display"></span>
+        <button id="today-btn" class="nav-btn today-btn" title="Aujourd'hui">🏠</button>
+        <button id="next-day" class="nav-btn" title="Jour suivant">▶</button>
       </div>
       <div id="cards-container" class="cards-grid"></div>
     </section>
@@ -66,17 +66,45 @@
       </div>
     </section>
 
-    <!-- ENFANTS -->
+    <!-- PARAMÈTRES -->
     <section class="tab-content" id="tab-settings">
-      <div class="children-list" id="children-list"></div>
-      <form id="child-form" class="form-card">
-        <input type="text" id="child-name" placeholder="Nom de l'enfant *" required>
-        <input type="number" id="child-age" placeholder="Âge (mois)" min="0" max="60">
-        <div class="form-actions">
-          <button type="submit" class="btn-primary">Ajouter enfant</button>
-          <button type="button" class="btn-secondary" id="child-cancel">Annuler</button>
+      <div class="settings-section">
+        <h2>👶 Gestion des enfants</h2>
+        <div class="children-list" id="children-list"></div>
+        <form id="child-form" class="form-card">
+          <input type="text" id="child-name" placeholder="Nom de l'enfant *" required>
+          <input type="number" id="child-age" placeholder="Âge (mois)" min="0" max="60">
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Ajouter enfant</button>
+            <button type="button" class="btn-secondary" id="child-cancel">Annuler</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="settings-section">
+        <h2>🎨 Apparence</h2>
+        <div class="theme-selector form-card">
+          <label class="theme-option">
+            <input type="radio" name="theme" value="light">
+            ☀️ Thème clair
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="dark">
+            🌙 Thème sombre
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="auto" checked>
+            🔄 Automatique (OS)
+          </label>
+          <p class="theme-hint">Le thème est synchronisé entre tes appareils</p>
         </div>
-      </form>
+      </div>
+
+      <div class="settings-section">
+        <h2>🔄 Synchronisation</h2>
+        <button id="sync-btn" class="btn-primary full-width">Forcer synchronisation Redis</button>
+        <p class="sync-status" id="sync-status">Dernière sync : jamais</p>
+      </div>
     </section>
   </div>
 
@@ -100,20 +128,24 @@
         this.currentDate = new Date();
         this.events = {};
         this.currentEventType = null;
+        this.theme = localStorage.getItem('theme') || 'auto';
+        this.lastSync = localStorage.getItem('lastSync') || null;
         this.init();
       }
 
       async init() {
         this.bindEvents();
         this.renderDate();
-        await this.loadChildren();
+        await this.syncAndMergeChildren();
         this.loadDayEvents();
         this.renderCards();
         this.updateHeader();
+        this.applyTheme();
         this.updateSummary();
       }
 
       bindEvents() {
+        // Onglets
         document.querySelectorAll('.tab-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             document.querySelector('.tab-btn.active').classList.remove('active');
@@ -123,25 +155,41 @@
           });
         });
 
+        // Navigation dates
         document.getElementById('prev-day').onclick = () => this.changeDay(-1);
         document.getElementById('next-day').onclick = () => this.changeDay(1);
         document.getElementById('today-btn').onclick = () => this.setToday();
 
+        // Enfant
         document.getElementById('add-child-btn').onclick = () => {
           document.querySelector('.tab-btn[data-tab="settings"]').click();
         };
 
+        // Formulaire enfant
         document.getElementById('child-form').onsubmit = (e) => {
           e.preventDefault();
           this.addChild();
         };
 
+        // Modal
         document.getElementById('modal-cancel').onclick = () => this.closeModal();
         document.getElementById('modal-save').onclick = () => this.saveEvent();
+
+        // Paramètres
+        document.querySelectorAll('input[name="theme"]').forEach(radio => {
+          radio.addEventListener('change', event => this.setTheme(event.target.value));
+        });
+        document.getElementById('sync-btn').onclick = () => this.syncAll();
+
+        // Date picker
+        const dateLabel = document.getElementById('currentDateLabel');
+        dateLabel.style.cursor = 'pointer';
+        dateLabel.title = 'Cliquer pour choisir une date';
+        dateLabel.onclick = () => this.openDatePicker();
       }
 
-      async loadChildren() {
-        let children = JSON.parse(localStorage.getItem('children') || '[]');
+      async syncAndMergeChildren() {
+        const localChildren = JSON.parse(localStorage.getItem('children') || '[]');
 
         if (navigator.onLine) {
           try {
@@ -149,13 +197,29 @@
             if (res.ok) {
               const data = await res.json();
               if (data.ok && Array.isArray(data.data)) {
-                children = data.data;
-                localStorage.setItem('children', JSON.stringify(children));
+                const combined = [...localChildren];
+                const localIds = new Set(localChildren.map(c => c.id));
+                data.data.forEach(remoteChild => {
+                  if (!localIds.has(remoteChild.id)) combined.push(remoteChild);
+                });
+                localStorage.setItem('children', JSON.stringify(combined));
+                this.renderChildrenSelect(combined);
+                this.renderChildrenList(combined);
+                this.updateHeader();
+                this.loadDayEvents();
+                this.renderCards();
+                this.updateSummary();
+                return;
               }
             }
           } catch {}
         }
 
+        this.renderChildrenSelect(localChildren);
+        this.renderChildrenList(localChildren);
+      }
+
+      renderChildrenSelect(children) {
         const select = document.getElementById('child-select');
         select.innerHTML = '<option value="">Aucun enfant</option>';
         children.forEach(c => {
@@ -165,14 +229,11 @@
           select.appendChild(opt);
         });
 
-        if (this.currentChildId && children.find(c => c.id === this.currentChildId)) {
-          select.value = this.currentChildId;
-        } else if (children.length) {
+        if (!this.currentChildId && children.length > 0) {
           this.currentChildId = children[0].id;
-          select.value = this.currentChildId;
           localStorage.setItem('currentChildId', this.currentChildId);
         }
-
+        select.value = this.currentChildId;
         select.onchange = (e) => {
           this.currentChildId = e.target.value;
           localStorage.setItem('currentChildId', this.currentChildId);
@@ -181,56 +242,6 @@
           this.renderCards();
           this.updateSummary();
         };
-
-        this.renderChildrenList(children);
-      }
-
-      addChild() {
-        const name = document.getElementById('child-name').value.trim();
-        const age = parseInt(document.getElementById('child-age').value) || 0;
-        if (!name) return;
-
-        const child = { id: Date.now().toString(), name, age };
-        let children = JSON.parse(localStorage.getItem('children') || '[]');
-        children.push(child);
-        localStorage.setItem('children', JSON.stringify(children));
-
-        if (navigator.onLine) {
-          fetch('/api/suivi-bebe/children', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(child)
-          }).catch(() => {});
-        }
-
-        document.getElementById('child-name').value = '';
-        document.getElementById('child-age').value = '';
-
-        this.currentChildId = child.id;
-        localStorage.setItem('currentChildId', this.currentChildId);
-        this.loadChildren();
-        this.updateHeader();
-        this.loadDayEvents();
-        this.renderCards();
-        this.updateSummary();
-      }
-
-      deleteChild(id) {
-        if (!confirm('Supprimer définitivement cet enfant ?')) return;
-        let children = JSON.parse(localStorage.getItem('children') || '[]');
-        children = children.filter(c => c.id !== id);
-        localStorage.setItem('children', JSON.stringify(children));
-
-        if (this.currentChildId === id) {
-          this.currentChildId = '';
-          localStorage.removeItem('currentChildId');
-        }
-
-        this.loadChildren();
-        this.updateHeader();
-        this.loadDayEvents();
-        this.renderCards();
-        this.updateSummary();
       }
 
       renderChildrenList(children) {
@@ -248,6 +259,18 @@
             <button class="btn-danger" onclick="app.deleteChild('${child.id}')">×</button>
           </div>
         `).join('');
+      }
+
+      deleteChild(id) {
+        if (!confirm('Supprimer définitivement cet enfant ?')) return;
+        let children = JSON.parse(localStorage.getItem('children') || '[]');
+        children = children.filter(c => c.id !== id);
+        localStorage.setItem('children', JSON.stringify(children));
+        if (this.currentChildId === id) {
+          this.currentChildId = '';
+          localStorage.removeItem('currentChildId');
+        }
+        this.syncAndMergeChildren();
       }
 
       updateHeader() {
@@ -281,6 +304,25 @@
         });
         document.getElementById('date-display').textContent = full;
         document.getElementById('currentDateLabel').textContent = short;
+      }
+
+      openDatePicker() {
+        let input = document.createElement('input');
+        input.type = 'date';
+        input.value = this.currentDate.toISOString().slice(0,10);
+        input.style.position = 'fixed';
+        input.style.top = '-100px';
+        document.body.appendChild(input);
+        input.focus();
+        input.onchange = (e) => {
+          this.currentDate = new Date(e.target.value);
+          this.renderDate();
+          this.loadDayEvents();
+          this.renderCards();
+          this.updateSummary();
+          input.remove();
+        };
+        input.onblur = () => input.remove();
       }
 
       loadDayEvents() {
@@ -467,6 +509,56 @@
         if (wakeups === 0) badge.textContent = '🟢 Excellente';
         else if (wakeups <= 2) badge.textContent = '🟡 Bonne';
         else badge.textContent = '🔴 Médiocre';
+      }
+
+      addChild() {
+        const name = document.getElementById('child-name').value.trim();
+        const age = parseInt(document.getElementById('child-age').value) || 0;
+        if (!name) return;
+
+        const child = { id: Date.now().toString(), name, age };
+        let children = JSON.parse(localStorage.getItem('children') || '[]');
+        children.push(child);
+        localStorage.setItem('children', JSON.stringify(children));
+
+        if (navigator.onLine) {
+          fetch('/api/suivi-bebe/children', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(child)
+          }).catch(() => {});
+        }
+
+        document.getElementById('child-name').value = '';
+        document.getElementById('child-age').value = '';
+
+        this.currentChildId = child.id;
+        localStorage.setItem('currentChildId', this.currentChildId);
+        this.syncAndMergeChildren();
+      }
+
+      syncAll() {
+        this.syncAndMergeChildren();
+        this.loadDayEvents();
+        this.syncDayRemote();
+        document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
+        localStorage.setItem('lastSync', new Date().toISOString());
+      }
+
+      setTheme(theme) {
+        this.theme = theme;
+        localStorage.setItem('theme', theme);
+        this.applyTheme();
+      }
+
+      applyTheme() {
+        let themeToApply = this.theme;
+        if (this.theme === 'auto') {
+          themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', themeToApply);
+        const radio = document.querySelector(`input[name="theme"][value="${this.theme}"]`);
+        if (radio) radio.checked = true;
       }
     }
 

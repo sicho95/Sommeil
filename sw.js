@@ -5,10 +5,9 @@ const urlsToCache = [
   '/',
   'index.html',
   'css/main.css',
-  'app.js',
   'manifest.webmanifest',
-  'icon-192.png',
-  'icon-512.png'
+  'assets/icon-192.png',
+  'assets/icon-512.png'
 ];
 
 // Installe le nouveau cache

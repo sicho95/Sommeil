@@ -25,7 +25,6 @@ export default async function handler(req, res) {
       console.log('Enfants trouvés:', enfants.length);
       await client.quit();
 
-      // ✅ VRAIMENT CORRIGÉ : renvoie "data" au lieu de "enfants"
       res.status(200).json({ ok: true, data: enfants });
       return;
     }
@@ -38,7 +37,28 @@ export default async function handler(req, res) {
       await client.set(`child:${id}`, JSON.stringify(body));
       await client.sAdd('children:index', id);
 
-      console.log(`Enfant ajouté: child:${id}`);
+      console.log(`Enfant ajoutÃ©: child:${id}`);
+
+      await client.quit();
+      res.status(200).json({ ok: true, id });
+      return;
+    }
+
+    if (req.method === 'DELETE') {
+      const body = req.body || {};
+      const id = body.id;
+
+      if (!id) {
+        await client.quit();
+        res.status(400).json({ ok: false, error: 'ID requis' });
+        return;
+      }
+
+      // Supprime l'enfant de Redis
+      await client.del(`child:${id}`);
+      await client.sRem('children:index', id);
+
+      console.log(`Enfant supprimÃ©: child:${id}`);
 
       await client.quit();
       res.status(200).json({ ok: true, id });
@@ -46,7 +66,7 @@ export default async function handler(req, res) {
     }
 
     await client.quit();
-    res.status(405).json({ ok: false, error: 'Méthode non autorisée' });
+    res.status(405).json({ ok: false, error: 'MÃ©thode non autorisÃ©e' });
   } catch (error) {
     console.error('Erreur API enfants:', error);
     try { await client.quit(); } catch {}

@@ -1,6 +1,6 @@
 import { createClient } from 'redis';
 
-module.exports = async function (req, res) {
+export default async function handler(req, res) {
   const client = createClient({ url: process.env.REDIS_URL });
   
   try {
@@ -34,4 +34,4 @@ module.exports = async function (req, res) {
   } finally {
     try { await client.quit(); } catch {}
   }
-};
+}

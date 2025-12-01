@@ -2,14 +2,14 @@ import { createClient } from 'redis';
 
 export default async function handler(req, res) {
   const client = createClient({ url: process.env.REDIS_URL });
-  
+
   try {
     await client.connect();
 
     if (req.method === 'GET') {
       const ids = await client.sMembers('children:index');
       console.log('IDs dans children:index:', ids);
-      
+
       const enfants = [];
       for (const id of ids) {
         const json = await client.get(`child:${id}`);
@@ -21,12 +21,12 @@ export default async function handler(req, res) {
           }
         }
       }
-      
+
       console.log('Enfants trouvés:', enfants.length);
       await client.quit();
-      
-      // ✅ CORRIGÉ : renvoie "data" au lieu de "enfants"
-      res.status(200).json({ ok: true,  data });
+
+      // ✅ VRAIMENT CORRIGÉ : renvoie "data" au lieu de "enfants"
+      res.status(200).json({ ok: true, data: enfants });
       return;
     }
 
@@ -34,12 +34,12 @@ export default async function handler(req, res) {
       const body = req.body || {};
       let id = body.id || String(Date.now());
       body.id = id;
-      
+
       await client.set(`child:${id}`, JSON.stringify(body));
       await client.sAdd('children:index', id);
-      
+
       console.log(`Enfant ajouté: child:${id}`);
-      
+
       await client.quit();
       res.status(200).json({ ok: true, id });
       return;

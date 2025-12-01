@@ -7,7 +7,8 @@ export default async function handler(req, res) {
     await client.connect();
 
     if (req.method === 'GET') {
-      const { childId, date } = req.query;
+      const childId = req.query.childId;
+      const date = req.query.date;
       if (!childId || !date) {
         res.status(400).json({ ok: false, error: 'childId et date sont requis' });
         return;
@@ -19,7 +20,9 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'POST') {
-      const { childId, date, events } = req.body || {};
+      const childId = req.body && req.body.childId;
+      const date = req.body && req.body.date;
+      const events = req.body && req.body.events ? req.body.events : {};
       if (!childId || !date) {
         res.status(400).json({ ok: false, error: 'childId et date sont requis' });
         return;
@@ -27,7 +30,7 @@ export default async function handler(req, res) {
       const key = `day:${childId}:${date}`;
       await client.set(
         key,
-        JSON.stringify({ childId, date, events: events || {}, updatedAt: new Date().toISOString() })
+        JSON.stringify({ childId, date, events, updatedAt: new Date().toISOString() })
       );
       res.status(200).json({ ok: true });
       return;

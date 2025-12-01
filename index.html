@@ -1,79 +1,856 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sommeil Bébé</title>
+  <meta charset="utf-8" />
+  <title>Suivi sommeil bébé</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
-  <script>
-    // Charge le thème stocké avant l'affichage du DOM
-    const prefs = JSON.parse(localStorage.getItem('sommeil_prefs') || '{}');
-    document.documentElement.setAttribute('data-theme', prefs.theme || 'auto');
-  </script>
+  <meta name="theme-color" content="#f0f4ff">
   <link rel="stylesheet" href="css/main.css">
 </head>
 <body>
-  <!-- Sélecteur Enfant -->
-  <select id="childSelect">
-    <option value="default">Bébé 1</option>
-  </select>
-
-  <!-- Écran Jour -->
-  <div id="dayScreen" class="day-container">
-    <div class="calendar-nav">
-      <button id="prevDay">←</button>
-      <span id="currentDate"></span>
-      <button id="nextDay">→</button>
-    </div>
-
-    <!-- Cartes avec Sliders "Aucune" -->
-    <div class="cards">
-      <div class="card coucher">
-        <h3>Coucher</h3>
-        <input type="time" id="bedtime">
+  <div class="app-root">
+    <!-- HEADER ENFANT + DATE -->
+    <header class="app-header">
+      <div class="header-top">
+        <div class="child-select-wrapper">
+          <select id="child-select" class="child-select">
+            <option value="">Aucun enfant</option>
+          </select>
+          <button id="add-child-btn" class="icon-button" aria-label="Ajouter">＋</button>
+        </div>
       </div>
-      
-      <div class="card reveils">
-        <h3>Réveils Nocturnes</h3>
-        <label class="toggle-slider">
-          <input type="checkbox" id="noWakes">
-          <span class="slider">Aucune</span>
-        </label>
-        <input type="number" id="wakeCount" style="display:none">
+      <div class="header-bottom">
+        <span class="header-child-name" id="currentChildName">Sélectionne un enfant</span>
+        <span class="header-date" id="currentDateLabel">Chargement...</span>
+      </div>
+    </header>
+
+    <!-- TABS -->
+    <nav class="tab-bar">
+      <button class="tab-btn active" data-tab="day">Jour</button>
+      <button class="tab-btn" data-tab="summary">Synthèse</button>
+      <button class="tab-btn" data-tab="settings">Paramètres</button>
+    </nav>
+
+    <!-- JOUR -->
+    <section class="tab-content active" id="tab-day">
+      <div class="date-nav">
+        <button id="prev-day" class="nav-btn" title="Jour précédent">◀</button>
+        <span id="date-display" class="date-display"></span>
+        <button id="today-btn" class="nav-btn today-btn" title="Aujourd'hui">🏠</button>
+        <button id="next-day" class="nav-btn" title="Jour suivant">▶</button>
+      </div>
+      <div id="cards-container" class="cards-grid"></div>
+    </section>
+
+    <!-- SYNTHÈSE -->
+    <section class="tab-content" id="tab-summary">
+      <div class="summary-grid">
+        <div class="summary-card total">
+          <div class="summary-value" id="total-sleep">--h --m</div>
+          <div class="summary-label">Sommeil total</div>
+        </div>
+        <div class="summary-card night">
+          <div class="summary-value" id="night-sleep">--h --m</div>
+          <div class="summary-label">Nuit</div>
+        </div>
+        <div class="summary-card naps">
+          <div class="summary-value" id="naps-sleep">--h --m</div>
+          <div class="summary-label">Siestes</div>
+        </div>
+        <div class="summary-card quality">
+          <div class="quality-badge" id="quality-badge">–</div>
+          <div class="summary-label">Qualité nuit</div>
+        </div>
       </div>
 
-      <div class="card siestes">
-        <h3>Siestes</h3>
-        <label class="toggle-slider">
-          <input type="checkbox" id="noNaps">
-          <span class="slider">Aucune</span>
-        </label>
-        <input type="number" id="napCount" style="display:none">
-        <input type="time" id="napDuration" style="display:none">
+      <!-- Onglets période stats -->
+      <div class="stats-tabs" id="stats-tabs">
+        <button class="tab active" data-period="day">Jour</button>
+        <button class="tab" data-period="week">Semaine</button>
+        <button class="tab" data-period="month">Mois</button>
+      </div>
+      <div id="statsDisplay"></div>
+    </section>
+
+    <!-- PARAMÈTRES -->
+    <section class="tab-content" id="tab-settings">
+      <div class="settings-section">
+        <h2>👶 Gestion des enfants</h2>
+        <div class="children-list" id="children-list"></div>
+        <form id="child-form" class="form-card">
+          <input type="text" id="child-name" placeholder="Nom de l'enfant *" required>
+          <input type="number" id="child-age" placeholder="Âge (mois)" min="0" max="60">
+          <div class="form-actions">
+            <button type="submit" class="btn-primary">Ajouter enfant</button>
+            <button type="button" class="btn-secondary" id="child-cancel">Annuler</button>
+          </div>
+        </form>
       </div>
 
-      <div class="card repas">
-        <h3>Repas</h3>
-        <select id="mealQuality">
-          <option>Bien</option>
-          <option>Peu</option>
-          <option>Rien</option>
-        </select>
+      <div class="settings-section">
+        <h2>🎨 Apparence</h2>
+        <div class="theme-selector form-card">
+          <label class="theme-option">
+            <input type="radio" name="theme" value="light">
+            ☀️ Thème clair
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="dark">
+            🌙 Thème sombre
+          </label>
+          <label class="theme-option">
+            <input type="radio" name="theme" value="auto" checked>
+            🔄 Automatique (OS)
+          </label>
+          <p class="theme-hint">Le thème s'adapte à tes préférences système</p>
+        </div>
       </div>
-    </div>
 
-    <!-- Stats Tabs -->
-    <div class="stats-tabs">
-      <button class="tab active" data-period="day">Jour</button>
-      <button class="tab" data-period="week">Semaine</button>
-      <button class="tab" data-period="month">Mois</button>
-    </div>
-    <div id="statsDisplay"></div>
+      <div class="settings-section">
+        <h2>🔄 Synchronisation</h2>
+        <button id="sync-btn" class="btn-primary full-width">Forcer synchronisation Redis</button>
+        <p class="sync-status" id="sync-status">Dernière sync : jamais</p>
+      </div>
+    </section>
   </div>
 
-  <!-- Appel unique du JavaScript -->
-  <script src="app.js"></script>
+  <!-- MODAL ÉVÉNEMENTS -->
+  <div id="modal" class="modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-content">
+      <h3 id="modal-title"></h3>
+      <div id="modal-body"></div>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="btn-secondary">Annuler</button>
+        <button id="modal-save" class="btn-primary">Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class SuiviBebe {
+      constructor() {
+        // Initialise les préférences et l'état courant depuis localStorage
+        this.currentChildId = localStorage.getItem('currentChildId') || '';
+        this.currentDate = new Date();
+        this.events = {};
+        this.currentEventType = null;
+        this.theme = localStorage.getItem('theme') || 'auto';
+        this.lastSync = localStorage.getItem('lastSync') || null;
+        this.currentStatsPeriod = 'day'; // Jour / Semaine / Mois
+
+        this.init();
+      }
+
+      async init() {
+        this.bindEvents();
+        this.renderDate();
+        await this.syncAndMergeChildren();
+        this.loadDayEvents();
+        this.renderCards();
+        this.updateHeader();
+        this.applyTheme();
+        this.updateSummaryForCurrentPeriod();
+        this.setupThemeListener();
+      }
+
+      // Gère tout le binding des événements DOM
+      bindEvents() {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelector('.tab-btn.active').classList.remove('active');
+            document.querySelector('.tab-content.active').classList.remove('active');
+            e.target.classList.add('active');
+            document.getElementById(`tab-${e.target.dataset.tab}`).classList.add('active');
+          });
+        });
+
+        document.getElementById('prev-day').onclick = () => this.changeDay(-1);
+        document.getElementById('next-day').onclick = () => this.changeDay(1);
+        document.getElementById('today-btn').onclick = () => this.setToday();
+
+        document.getElementById('add-child-btn').onclick = () => {
+          document.querySelector('.tab-btn[data-tab="settings"]').click();
+        };
+
+        document.getElementById('child-form').onsubmit = (e) => {
+          e.preventDefault();
+          this.addChild();
+        };
+
+        document.getElementById('modal-cancel').onclick = () => this.closeModal();
+        document.getElementById('modal-save').onclick = () => this.saveEvent();
+
+        document.querySelectorAll('input[name="theme"]').forEach(radio => {
+          radio.addEventListener('change', event => this.setTheme(event.target.value));
+        });
+        document.getElementById('sync-btn').onclick = () => this.syncAll();
+
+        const dateLabel = document.getElementById('currentDateLabel');
+        dateLabel.style.cursor = 'pointer';
+        dateLabel.title = 'Cliquer pour choisir une date';
+        dateLabel.onclick = () => this.openDatePicker();
+
+        // Gère les onglets Jour / Semaine / Mois des stats
+        document.querySelectorAll('#stats-tabs .tab').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            document.querySelectorAll('#stats-tabs .tab').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+            this.currentStatsPeriod = e.target.dataset.period;
+            this.updateSummaryForCurrentPeriod();
+          });
+        });
+      }
+
+      // Synchronise puis fusionne les enfants locaux et distants
+      async syncAndMergeChildren() {
+        let localChildren = JSON.parse(localStorage.getItem('children') || '[]');
+        let remoteChildren = [];
+
+        if (navigator.onLine) {
+          try {
+            const res = await fetch('/api/suivi-bebe/children');
+            if (res.ok) {
+              const data = await res.json();
+              if (data.ok && Array.isArray(data.data)) {
+                remoteChildren = data.data;
+              }
+            }
+          } catch (e) {
+            console.error('Erreur sync enfants:', e);
+          }
+        }
+
+        const ids = new Set(localChildren.map(c => c.id));
+        let merged = [...localChildren];
+        remoteChildren.forEach(c => {
+          if (!ids.has(c.id)) merged.push(c);
+        });
+
+        localStorage.setItem('children', JSON.stringify(merged));
+        
+        this.renderChildrenSelect(merged);
+        this.renderChildrenList(merged);
+        
+        localStorage.setItem('lastSync', new Date().toISOString());
+        document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
+      }
+
+      // Met à jour la liste déroulante des enfants
+      renderChildrenSelect(children) {
+        const select = document.getElementById('child-select');
+        select.innerHTML = '<option value="">Aucun enfant</option>';
+        children.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = `${c.name} (${c.age || 0} mois)`;
+          select.appendChild(opt);
+        });
+
+        if (!this.currentChildId && children.length > 0) {
+          this.currentChildId = children[0].id;
+          localStorage.setItem('currentChildId', this.currentChildId);
+        }
+        select.value = this.currentChildId;
+        select.onchange = (e) => {
+          this.currentChildId = e.target.value;
+          localStorage.setItem('currentChildId', this.currentChildId);
+          this.updateHeader();
+          this.loadDayEvents();
+          this.renderCards();
+          this.updateSummaryForCurrentPeriod();
+        };
+      }
+
+      // Affiche la liste des enfants dans les paramètres
+      renderChildrenList(children) {
+        const container = document.getElementById('children-list');
+        if (!children.length) {
+          container.innerHTML = '<p class="empty-state">Aucun enfant. Ajoute-en un !</p>';
+          return;
+        }
+        container.innerHTML = children.map(child => `
+          <div class="child-item">
+            <div>
+              <strong>${child.name}</strong>
+              <span class="child-age">${child.age || 0} mois</span>
+            </div>
+            <button class="btn-danger" onclick="app.deleteChild('${child.id}')">×</button>
+          </div>
+        `).join('');
+      }
+
+      // Ajoute un enfant localement et à distance
+      async addChild() {
+        const name = document.getElementById('child-name').value.trim();
+        const age = parseInt(document.getElementById('child-age').value) || 0;
+        if (!name) return;
+
+        const child = { id: Date.now().toString(), name, age };
+        let children = JSON.parse(localStorage.getItem('children') || '[]');
+        children.push(child);
+        localStorage.setItem('children', JSON.stringify(children));
+
+        if (navigator.onLine) {
+          try {
+            await fetch('/api/suivi-bebe/children', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(child)
+            });
+          } catch {}
+        }
+
+        document.getElementById('child-name').value = '';
+        document.getElementById('child-age').value = '';
+
+        this.currentChildId = child.id;
+        localStorage.setItem('currentChildId', this.currentChildId);
+        
+        await this.syncAndMergeChildren();
+        this.updateHeader();
+        this.loadDayEvents();
+        this.renderCards();
+        this.updateSummaryForCurrentPeriod();
+      }
+
+      // Supprime un enfant localement et dans Redis
+      async deleteChild(id) {
+        if (!confirm('Supprimer définitivement cet enfant ?')) return;
+
+        let children = JSON.parse(localStorage.getItem('children') || '[]');
+        children = children.filter(c => c.id !== id);
+        localStorage.setItem('children', JSON.stringify(children));
+
+        if (navigator.onLine) {
+          try {
+            await fetch('/api/suivi-bebe/children', {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id })
+            });
+          } catch (e) {
+            console.error('Erreur suppression Redis:', e);
+          }
+        }
+
+        if (this.currentChildId === id) {
+          this.currentChildId = '';
+          localStorage.removeItem('currentChildId');
+        }
+
+        await this.syncAndMergeChildren();
+        this.updateHeader();
+        this.loadDayEvents();
+        this.renderCards();
+        this.updateSummaryForCurrentPeriod();
+      }
+
+      // Met à jour le header avec le nom de l'enfant courant
+      updateHeader() {
+        const children = JSON.parse(localStorage.getItem('children') || '[]');
+        const child = children.find(c => c.id === this.currentChildId);
+        document.getElementById('currentChildName').textContent = child ? child.name : 'Aucun enfant';
+      }
+
+      // Replace la date sur aujourd'hui
+      setToday() {
+        this.currentDate = new Date();
+        this.renderDate();
+        this.loadDayEvents();
+        this.renderCards();
+        this.updateSummaryForCurrentPeriod();
+      }
+
+      // Décale la date de delta jours
+      changeDay(delta) {
+        this.currentDate.setDate(this.currentDate.getDate() + delta);
+        this.renderDate();
+        this.loadDayEvents();
+        this.renderCards();
+        this.updateSummaryForCurrentPeriod();
+      }
+
+      // Affiche la date au format lisible
+      renderDate() {
+        const full = this.currentDate.toLocaleDateString('fr-FR', {
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+        });
+        const short = this.currentDate.toLocaleDateString('fr-FR', {
+          weekday: 'long', day: 'numeric', month: 'long'
+        });
+        document.getElementById('date-display').textContent = full;
+        document.getElementById('currentDateLabel').textContent = short;
+      }
+
+      // Ouvre un sélecteur de date natif
+      openDatePicker() {
+        let input = document.createElement('input');
+        input.type = 'date';
+        input.value = this.currentDate.toISOString().slice(0,10);
+        input.style.position = 'fixed';
+        input.style.top = '-100px';
+        document.body.appendChild(input);
+        input.focus();
+        input.click();
+        input.onchange = (e) => {
+          this.currentDate = new Date(e.target.value + 'T12:00:00');
+          this.renderDate();
+          this.loadDayEvents();
+          this.renderCards();
+          this.updateSummaryForCurrentPeriod();
+          input.remove();
+        };
+        input.onblur = () => setTimeout(() => input.remove(), 100);
+      }
+
+      // Charge les événements du jour depuis localStorage et backend
+      loadDayEvents() {
+        if (!this.currentChildId) {
+          this.events = {};
+          return;
+        }
+        const dateKey = this.currentDate.toISOString().slice(0, 10);
+        const key = `day_${this.currentChildId}_${dateKey}`;
+        const saved = localStorage.getItem(key);
+        this.events = saved ? JSON.parse(saved) : {};
+
+        if (navigator.onLine) {
+          fetch(`/api/suivi-bebe/day?childId=${encodeURIComponent(this.currentChildId)}&date=${encodeURIComponent(dateKey)}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+              if (data && data.ok && data.data && data.data.events) {
+                this.events = data.data.events;
+                this.saveDayLocal();
+                this.renderCards();
+                this.updateSummaryForCurrentPeriod();
+              }
+            })
+            .catch(() => {});
+        }
+      }
+
+      // Sauvegarde les événements du jour en localStorage
+      saveDayLocal() {
+        if (!this.currentChildId) return;
+        const dateKey = this.currentDate.toISOString().slice(0, 10);
+        const key = `day_${this.currentChildId}_${dateKey}`;
+        localStorage.setItem(key, JSON.stringify(this.events));
+      }
+
+      // Envoie les événements du jour au backend
+      syncDayRemote() {
+        if (!navigator.onLine || !this.currentChildId) return;
+        const dateKey = this.currentDate.toISOString().slice(0, 10);
+        fetch('/api/suivi-bebe/day', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            childId: this.currentChildId,
+            date: dateKey,
+            events: this.events
+          })
+        }).catch(() => {});
+      }
+
+      // Rend les cartes jour à partir des événements
+      renderCards() {
+        const cards = [
+          { id: 'coucher',      title: 'Coucher soir',         color: 'blue'   },
+          { id: 'reveils',      title: 'Réveils nuit',        color: 'purple' },
+          { id: 'reveil-matin', title: 'Réveil matin',        color: 'orange' },
+          { id: 'sieste-matin', title: 'Sieste matin',        color: 'mint'   },
+          { id: 'sieste-aprem', title: 'Sieste après-midi',   color: 'teal'   },
+          { id: 'repas',        title: 'Repas',               color: 'pink'   }
+        ];
+        const c = document.getElementById('cards-container');
+        c.innerHTML = cards.map(card => {
+          const e = this.events[card.id] || {};
+          let details = '';
+          if (card.id === 'reveils') {
+            if (e.noWake) {
+              details = 'Aucun réveil';
+            } else if (e.count) {
+              details = `${e.count} réveils ${e.notes || ''}`;
+            } else {
+              details = e.notes || '';
+            }
+          } else if (card.id === 'repas' && e.meal) {
+            const map = { bien: 'Bien mangé', peu: 'Peu mangé', rien: 'Rien mangé' };
+            details = `${map[e.meal] || ''} ${e.notes || ''}`.trim();
+          } else if (card.id === 'sieste-matin' || card.id === 'sieste-aprem') {
+            if (e.noNap) {
+              details = 'Aucune sieste';
+            } else {
+              details = e.notes || '';
+            }
+          } else {
+            details = e.notes || '';
+          }
+          const timeLabel = (card.id === 'reveils' && e.noWake) || ((card.id === 'sieste-matin' || card.id === 'sieste-aprem') && e.noNap)
+            ? '—'
+            : (e.time || 'Non renseigné');
+          return `
+            <div class="event-card ${card.color}" onclick="app.openEventModal('${card.id}')">
+              <div class="card-title">${card.title}</div>
+              <div class="card-time">${timeLabel}</div>
+              <div class="card-details">${details}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Ouvre la modale de saisie selon le type d'événement
+      openEventModal(type) {
+        this.currentEventType = type;
+        const e = this.events[type] || {};
+        let body = '';
+
+        if (['coucher', 'reveil-matin', 'sieste-matin', 'sieste-aprem'].includes(type)) {
+          body += `
+            <div class="time-input">
+              <label>Heure</label>
+              <input type="time" id="event-time" value="${e.time || ''}">
+            </div>
+          `;
+        }
+
+        // Ajoute les toggles "Aucune sieste" / "Aucun réveil"
+        if (type === 'sieste-matin') {
+          body += `
+            <div class="segment-input">
+              <label>Aucune sieste ce matin</label>
+              <div class="segments">
+                <label>
+                  <input type="checkbox" id="no-nap-toggle" ${e.noNap ? 'checked' : ''}>
+                  Aucune
+                </label>
+              </div>
+            </div>
+          `;
+        } else if (type === 'sieste-aprem') {
+          body += `
+            <div class="segment-input">
+              <label>Aucune sieste cet après-midi</label>
+              <div class="segments">
+                <label>
+                  <input type="checkbox" id="no-nap-toggle" ${e.noNap ? 'checked' : ''}>
+                  Aucune
+                </label>
+              </div>
+            </div>
+          `;
+        } else if (type === 'reveils') {
+          body += `
+            <div class="segment-input">
+              <label>Aucun réveil cette nuit</label>
+              <div class="segments">
+                <label>
+                  <input type="checkbox" id="no-wake-toggle" ${e.noWake ? 'checked' : ''}>
+                  Aucun
+                </label>
+              </div>
+            </div>
+          `;
+        }
+
+        if (type === 'reveils') {
+          body += `
+            <div class="number-input">
+              <label>Nombre de réveils</label>
+              <input type="number" id="event-count" min="0" max="10" value="${e.count || ''}">
+            </div>
+            <div class="time-input">
+              <label>Heure moyenne</label>
+              <input type="time" id="event-time" value="${e.time || ''}">
+            </div>
+          `;
+        } else if (type === 'repas') {
+          body += `
+            <div class="segment-input">
+              <label>Quantité mangée</label>
+              <div class="segments">
+                <label><input type="radio" name="meal" value="bien" ${e.meal === 'bien' ? 'checked' : ''}> Bien</label>
+                <label><input type="radio" name="meal" value="peu" ${e.meal === 'peu' ? 'checked' : ''}> Peu</label>
+                <label><input type="radio" name="meal" value="rien" ${e.meal === 'rien' ? 'checked' : ''}> Rien</label>
+              </div>
+            </div>
+          `;
+        }
+
+        body += `
+          <div class="notes-input">
+            <label>Notes</label>
+            <textarea id="event-notes" placeholder="Commentaires...">${e.notes || ''}</textarea>
+          </div>
+        `;
+
+        document.getElementById('modal-title').textContent = `Événement : ${type.replace('-', ' ')}`;
+        document.getElementById('modal-body').innerHTML = body;
+        document.getElementById('modal').classList.add('active');
+      }
+
+      // Sauvegarde l'événement courant depuis la modale
+      saveEvent() {
+        const e = this.events[this.currentEventType] || {};
+
+        if (this.currentEventType === 'reveils') {
+          const noWake = document.getElementById('no-wake-toggle')?.checked || false;
+          e.noWake = noWake;
+          if (noWake) {
+            e.count = 0;
+            e.time = '';
+          } else {
+            e.count = document.getElementById('event-count')?.value || '';
+            e.time = document.getElementById('event-time')?.value || '';
+          }
+        } else if (this.currentEventType === 'repas') {
+          e.meal = document.querySelector('input[name="meal"]:checked')?.value || '';
+        } else if (this.currentEventType === 'sieste-matin' || this.currentEventType === 'sieste-aprem') {
+          const noNap = document.getElementById('no-nap-toggle')?.checked || false;
+          e.noNap = noNap;
+          if (noNap) {
+            e.time = '';
+          } else {
+            e.time = document.getElementById('event-time')?.value || '';
+          }
+        } else {
+          e.time = document.getElementById('event-time')?.value || '';
+        }
+
+        e.notes = document.getElementById('event-notes')?.value || '';
+        this.events[this.currentEventType] = e;
+
+        this.saveDayLocal();
+        this.syncDayRemote();
+        this.renderCards();
+        this.updateSummaryForCurrentPeriod();
+        this.closeModal();
+      }
+
+      // Ferme la modale
+      closeModal() {
+        document.getElementById('modal').classList.remove('active');
+      }
+
+      // Met à jour les statistiques selon la période sélectionnée
+      updateSummaryForCurrentPeriod() {
+        if (this.currentStatsPeriod === 'day') {
+          this.updateSummaryForSingleDay(this.currentDate);
+        } else if (this.currentStatsPeriod === 'week') {
+          this.updateSummaryForRange(this.getLastNDates(7));
+        } else if (this.currentStatsPeriod === 'month') {
+          this.updateSummaryForRange(this.getLastNDates(30));
+        }
+      }
+
+      // Met à jour les stats pour un seul jour (comportement historique)
+      updateSummaryForSingleDay(dateObj) {
+        const backupDate = this.currentDate;
+        this.currentDate = new Date(dateObj);
+        this.loadDayEvents();
+
+        let nightMinutes = 0;
+        let napsMinutes = 0;
+        const wakeups = this.events.reveils?.noWake ? 0 : (parseInt(this.events.reveils?.count) || 0);
+
+        const fmt = (m) => {
+          const h = Math.floor(m / 60);
+          const mm = m % 60;
+          return `${h}h ${mm.toString().padStart(2, '0')}m`;
+        };
+
+        if (this.events.coucher?.time && this.events['reveil-matin']?.time) {
+          const [ch, cm] = this.events.coucher.time.split(':').map(Number);
+          const [rh, rm] = this.events['reveil-matin'].time.split(':').map(Number);
+          let start = ch * 60 + cm;
+          let end = rh * 60 + rm;
+          if (end <= start) end += 24 * 60;
+          nightMinutes = end - start;
+        }
+
+        ['sieste-matin', 'sieste-aprem'].forEach(id => {
+          const ev = this.events[id];
+          if (ev?.noNap) {
+            // Compte 0 volontairement, mais n'ajoute pas de minutes
+          } else if (ev?.time) {
+            napsMinutes += 90;
+          }
+        });
+
+        const total = nightMinutes + napsMinutes;
+        document.getElementById('night-sleep').textContent = fmt(nightMinutes);
+        document.getElementById('naps-sleep').textContent = fmt(napsMinutes);
+        document.getElementById('total-sleep').textContent = fmt(total);
+
+        const badge = document.getElementById('quality-badge');
+        if (wakeups === 0) badge.textContent = '🟢 Excellente';
+        else if (wakeups <= 2) badge.textContent = '🟡 Bonne';
+        else badge.textContent = '🔴 Médiocre';
+
+        // Met aussi à jour le bloc stats global pour rester cohérent
+        this.renderStatsAverages([{ nightMinutes, napsMinutes, wakeups }]);
+
+        this.currentDate = backupDate;
+        this.renderDate();
+        this.loadDayEvents();
+      }
+
+      // Met à jour les stats sur une plage de dates (semaine / mois)
+      updateSummaryForRange(dates) {
+        const results = [];
+
+        const backupChild = this.currentChildId;
+        const childId = this.currentChildId;
+        if (!childId) return;
+
+        dates.forEach(dateStr => {
+          const key = `day_${childId}_${dateStr}`;
+          const stored = localStorage.getItem(key);
+          if (!stored) return;
+
+          const events = JSON.parse(stored);
+          let nightMinutes = 0;
+          let napsMinutes = 0;
+          const wakeups = events.reveils?.noWake ? 0 : (parseInt(events.reveils?.count) || 0);
+
+          if (events.coucher?.time && events['reveil-matin']?.time) {
+            const [ch, cm] = events.coucher.time.split(':').map(Number);
+            const [rh, rm] = events['reveil-matin'].time.split(':').map(Number);
+            let start = ch * 60 + cm;
+            let end = rh * 60 + rm;
+            if (end <= start) end += 24 * 60;
+            nightMinutes = end - start;
+          }
+
+          ['sieste-matin', 'sieste-aprem'].forEach(id => {
+            const ev = events[id];
+            if (ev?.noNap) {
+              // 0 volontaire
+            } else if (ev?.time) {
+              napsMinutes += 90;
+            }
+          });
+
+          results.push({ nightMinutes, napsMinutes, wakeups });
+        });
+
+        if (!results.length) {
+          document.getElementById('night-sleep').textContent = '--h --m';
+          document.getElementById('naps-sleep').textContent = '--h --m';
+          document.getElementById('total-sleep').textContent = '--h --m';
+          document.getElementById('quality-badge').textContent = '–';
+          this.renderStatsAverages([]);
+          return;
+        }
+
+        this.renderStatsAverages(results);
+      }
+
+      // Rend les stats moyennes dans le bloc principal + statsDisplay
+      renderStatsAverages(results) {
+        const fmt = (m) => {
+          const h = Math.floor(m / 60);
+          const mm = m % 60;
+          return `${h}h ${mm.toString().padStart(2, '0')}m`;
+        };
+
+        if (!results.length) {
+          document.getElementById('statsDisplay').innerHTML = '';
+          return;
+        }
+
+        const totalNight = results.reduce((sum, r) => sum + r.nightMinutes, 0);
+        const totalNaps = results.reduce((sum, r) => sum + r.napsMinutes, 0);
+        const totalWake = results.reduce((sum, r) => sum + r.wakeups, 0);
+        const count = results.length;
+
+        const avgNight = totalNight / count;
+        const avgNaps = totalNaps / count;
+        const avgTotal = avgNight + avgNaps;
+        const avgWake = totalWake / count;
+
+        document.getElementById('night-sleep').textContent = fmt(avgNight);
+        document.getElementById('naps-sleep').textContent = fmt(avgNaps);
+        document.getElementById('total-sleep').textContent = fmt(avgTotal);
+
+        const badge = document.getElementById('quality-badge');
+        if (avgWake === 0) badge.textContent = '🟢 Excellente';
+        else if (avgWake <= 2) badge.textContent = '🟡 Bonne';
+        else badge.textContent = '🔴 Médiocre';
+
+        document.getElementById('statsDisplay').innerHTML = `
+          <div class="stats-grid">
+            <div class="summary-card">
+              <div class="summary-value">${fmt(avgTotal)}</div>
+              <div class="summary-label">Sommeil total moyen</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-value">${fmt(avgNight)}</div>
+              <div class="summary-label">Nuit moyenne</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-value">${fmt(avgNaps)}</div>
+              <div class="summary-label">Siestes moyennes</div>
+            </div>
+            <div class="summary-card">
+              <div class="summary-value">${avgWake.toFixed(1)}</div>
+              <div class="summary-label">Réveils moyens</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Retourne la liste des N derniers jours (format ISO)
+      getLastNDates(n) {
+        const dates = [];
+        const base = new Date(this.currentDate);
+        base.setHours(12,0,0,0);
+        for (let i = 0; i < n; i++) {
+          const d = new Date(base);
+          d.setDate(base.getDate() - i);
+          dates.push(d.toISOString().slice(0,10));
+        }
+        return dates;
+      }
+
+      // Force une synchronisation globale
+      async syncAll() {
+        await this.syncAndMergeChildren();
+        this.loadDayEvents();
+        this.syncDayRemote();
+        this.updateSummaryForCurrentPeriod();
+      }
+
+      // Modifie le thème préféré
+      setTheme(theme) {
+        this.theme = theme;
+        localStorage.setItem('theme', theme);
+        this.applyTheme();
+      }
+
+      // Applique le thème effectif (clair/sombre/auto)
+      applyTheme() {
+        let themeToApply = this.theme;
+        if (this.theme === 'auto') {
+          themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', themeToApply);
+        const radio = document.querySelector(`input[name="theme"][value="${this.theme}"]`);
+        if (radio) radio.checked = true;
+      }
+
+      // Met à jour le thème si le système change et que le mode auto est actif
+      setupThemeListener() {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          if (this.theme === 'auto') this.applyTheme();
+        });
+      }
+    }
+
+    const app = new SuiviBebe();
+  </script>
 </body>
 </html>

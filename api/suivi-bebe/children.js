@@ -1,13 +1,8 @@
-import { createClient } from 'redis';
+const { createClient } = require('redis');
 
-function createRedisClient() {
-  const url = process.env.REDIS_URL;
-  if (!url) throw new Error('REDIS_URL manquant');
-  return createClient({ url });
-}
-
-export default async function handler(req, res) {
-  const client = createRedisClient();
+module.exports = async function (req, res) {
+  const client = createClient({ url: process.env.REDIS_URL });
+  
   try {
     await client.connect();
 
@@ -34,8 +29,9 @@ export default async function handler(req, res) {
 
     res.status(405).json({ ok: false, error: 'Méthode non autorisée' });
   } catch (error) {
+    console.error('Erreur API enfants:', error);
     res.status(500).json({ ok: false, error: error.message || 'Erreur serveur' });
   } finally {
     try { await client.quit(); } catch {}
   }
-}
+};

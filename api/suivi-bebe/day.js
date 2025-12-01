@@ -2,20 +2,24 @@ import { createClient } from 'redis';
 
 export default async function handler(req, res) {
   const client = createClient({ url: process.env.REDIS_URL });
-  
+
   try {
     await client.connect();
 
     if (req.method === 'GET') {
       const childId = req.query.childId;
       const date = req.query.date;
+
       if (!childId || !date) {
         res.status(400).json({ ok: false, error: 'childId et date sont requis' });
         return;
       }
+
       const key = `day:${childId}:${date}`;
       const json = await client.get(key);
-      res.status(200).json({ ok: true,  json ? JSON.parse(json) : null });
+      const data = json ? JSON.parse(json) : null;
+
+      res.status(200).json({ ok: true, data });
       return;
     }
 
@@ -23,15 +27,18 @@ export default async function handler(req, res) {
       const childId = req.body && req.body.childId;
       const date = req.body && req.body.date;
       const events = req.body && req.body.events ? req.body.events : {};
+
       if (!childId || !date) {
         res.status(400).json({ ok: false, error: 'childId et date sont requis' });
         return;
       }
+
       const key = `day:${childId}:${date}`;
       await client.set(
         key,
         JSON.stringify({ childId, date, events, updatedAt: new Date().toISOString() })
       );
+
       res.status(200).json({ ok: true });
       return;
     }

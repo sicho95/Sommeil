@@ -102,9 +102,9 @@
           <button class="theme-tab active" data-theme="auto">
             <span class="theme-icon">🔄</span>
             <span class="theme-label">Auto</span>
-            <span class="theme-label">Le thème s'adapte à tes préférences système</span>
           </button>
         </div>
+        <p class="theme-hint">Le thème s'adapte à tes préférences système</p>
       </div>
 
       <div class="settings-section">
@@ -180,8 +180,14 @@
         document.getElementById('modal-save').onclick = () => this.saveEvent();
         document.querySelector('.modal-backdrop').onclick = () => this.closeModal();
 
-        document.querySelectorAll('input[name="theme"]').forEach(radio => {
-          radio.addEventListener('change', event => this.setTheme(event.target.value));
+        // Gestion des boutons de thème
+        document.querySelectorAll('.theme-tab').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const theme = e.currentTarget.dataset.theme;
+            document.querySelectorAll('.theme-tab').forEach(b => b.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            this.setTheme(theme);
+          });
         });
         document.getElementById('sync-btn').onclick = () => this.syncAll();
 
@@ -758,8 +764,14 @@
           themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', themeToApply);
-        const radio = document.querySelector('input[name="theme"][value="' + this.theme + '"]');
-        if (radio) radio.checked = true;
+        // Mettre à jour le bouton actif
+        document.querySelectorAll('.theme-tab').forEach(btn => {
+          if (btn.dataset.theme === this.theme) {
+            btn.classList.add('active');
+          } else {
+            btn.classList.remove('active');
+          }
+        });
       }
 
       setupThemeListener() {

@@ -783,19 +783,19 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
           if (this.theme === 'auto') this.applyTheme();
         });
-
-    toggleCollapse(sectionId) {
-      const content = document.getElementById(sectionId);
-      const icon = document.getElementById(sectionId + '-icon');
-
-      if (content.classList.contains('collapsed')) {
-        content.classList.remove('collapsed');
-        icon.textContent = '▼';
-      } else {
-        content.classList.add('collapsed');
-        icon.textContent = '▶';
       }
-    }
+
+      toggleCollapse(sectionId) {
+        const content = document.getElementById(sectionId);
+        const icon = document.getElementById(sectionId + '-icon');
+
+        if (content.classList.contains('collapsed')) {
+          content.classList.remove('collapsed');
+          icon.textContent = '▼';
+        } else {
+          content.classList.add('collapsed');
+          icon.textContent = '▶';
+        }
       }
     }
 

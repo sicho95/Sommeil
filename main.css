@@ -72,12 +72,6 @@ body {
   margin-bottom: 10px;
 }
 
-.header-bottom {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
 .child-select-wrapper {
   display: flex;
   align-items: center;
@@ -88,7 +82,7 @@ body {
   backdrop-filter: blur(10px);
 }
 
-.child-select, #child-select {
+.child-select {
   background: rgba(255,255,255,0.9);
   border: none;
   padding: 8px 14px;
@@ -188,6 +182,7 @@ body {
   width: 44px;
   height: 44px;
   min-width: 44px;
+  aspect-ratio: 1/1;
   border-radius: 50%;
   border: 2px solid var(--button-border);
   background: var(--button-bg);
@@ -225,9 +220,8 @@ body {
 /* Cartes responsive */
 .cards-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 14px;
-  margin: 20px 0;
 }
 
 @media (max-width: 480px) {
@@ -283,7 +277,7 @@ body {
   box-shadow: var(--shadow-hover);
 }
 
-/* Couleurs cartes thÃ¨me clair */
+/* ThÃ¨me clair */
 .event-card.blue {
   background: linear-gradient(135deg, #a8d0ff 0%, #8bb8ff 50%, #6da0ff 100%);
 }
@@ -303,7 +297,7 @@ body {
   background: linear-gradient(135deg, #ffd0e8 0%, #ffc0d8 50%, #ffb0c8 100%);
 }
 
-/* Couleurs cartes thÃ¨me sombre */
+/* ThÃ¨me sombre - couleurs plus profondes */
 [data-theme='dark'] .event-card.blue {
   background: linear-gradient(135deg, #4a5a8f 0%, #3a4a7f 50%, #2a3a6f 100%);
 }
@@ -391,42 +385,38 @@ body {
   font-weight: 700;
   margin: 0 auto 8px;
   box-shadow: var(--shadow-light);
-  background: var(--button-bg);
-  color: var(--text-main);
 }
 
-/* Stats tabs */
+/* Onglets stats pÃ©riode (Jour/Semaine/Mois) */
 .stats-tabs {
   display: flex;
   background: var(--bg-card);
   border-radius: 12px;
   overflow: hidden;
-  margin: 20px 0;
+  margin-top: 20px;
   border: 1px solid var(--button-border);
+  box-shadow: var(--shadow-light);
 }
 
-.stats-tabs .tab {
+.stats-tab {
   flex: 1;
-  padding: 12px;
+  padding: 14px 16px;
   border: none;
-  background: none;
+  background: transparent;
   font-size: 16px;
-  transition: background 0.2s;
-  cursor: pointer;
+  font-weight: 600;
   color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-.stats-tabs .tab.active {
-  background: var(--primary-blue);
+.stats-tab.active {
+  background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
   color: white;
 }
 
-#statsDisplay {
-  margin-top: 20px;
-}
-
-#statsDisplay .stats-grid {
-  margin-top: 0;
+.stats-tab:hover:not(.active) {
+  background: var(--button-bg);
 }
 
 /* ParamÃ¨tres */
@@ -582,9 +572,7 @@ body {
   backdrop-filter: blur(6px);
 }
 
-.modal.active {
-  display: flex;
-}
+.modal.active { display: flex; }
 
 .modal-backdrop {
   position: absolute;
@@ -601,7 +589,7 @@ body {
   overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0,0,0,0.4);
   position: relative;
-  z-index: 1001;
+  z-index: 1;
 }
 
 .modal-content h3 {

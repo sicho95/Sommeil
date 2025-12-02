@@ -5,8 +5,6 @@
   <title>Suivi sommeil bébé</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-  <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#f0f4ff">
   <link rel="stylesheet" href="css/main.css">
 </head>
@@ -48,32 +46,31 @@
 
     <!-- SYNTHÈSE -->
     <section class="tab-content" id="tab-summary">
-      <div class="summary-grid">
+      <div class="summary-grid" id="summary-grid">
         <div class="summary-card total">
           <div class="summary-value" id="total-sleep">--h --m</div>
-          <div class="summary-label">Sommeil total</div>
+          <div class="summary-label" id="total-label">Sommeil total</div>
         </div>
         <div class="summary-card night">
           <div class="summary-value" id="night-sleep">--h --m</div>
-          <div class="summary-label">Nuit</div>
+          <div class="summary-label" id="night-label">Nuit</div>
         </div>
         <div class="summary-card naps">
           <div class="summary-value" id="naps-sleep">--h --m</div>
-          <div class="summary-label">Siestes</div>
+          <div class="summary-label" id="naps-label">Siestes</div>
         </div>
         <div class="summary-card quality">
           <div class="quality-badge" id="quality-badge">–</div>
-          <div class="summary-label">Qualité nuit</div>
+          <div class="summary-label" id="quality-label">Qualité nuit</div>
         </div>
       </div>
 
       <!-- Onglets période stats -->
-      <div class="stats-tabs" id="stats-tabs">
-        <button class="tab active" data-period="day">Jour</button>
-        <button class="tab" data-period="week">Semaine</button>
-        <button class="tab" data-period="month">Mois</button>
+      <div class="stats-tabs">
+        <button class="stats-tab active" data-period="day">Jour</button>
+        <button class="stats-tab" data-period="week">Semaine</button>
+        <button class="stats-tab" data-period="month">Mois</button>
       </div>
-      <div id="statsDisplay"></div>
     </section>
 
     <!-- PARAMÈTRES -->
@@ -134,15 +131,13 @@
   <script>
     class SuiviBebe {
       constructor() {
-        // Initialise les préférences et l'état courant depuis localStorage
         this.currentChildId = localStorage.getItem('currentChildId') || '';
         this.currentDate = new Date();
         this.events = {};
         this.currentEventType = null;
         this.theme = localStorage.getItem('theme') || 'auto';
         this.lastSync = localStorage.getItem('lastSync') || null;
-        this.currentStatsPeriod = 'day'; // Période stats active
-
+        this.statsPeriod = 'day'; // Période stats active
         this.init();
       }
 
@@ -158,14 +153,13 @@
         this.setupThemeListener();
       }
 
-      // Attache tous les événements DOM
       bindEvents() {
         document.querySelectorAll('.tab-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
             document.querySelector('.tab-btn.active').classList.remove('active');
             document.querySelector('.tab-content.active').classList.remove('active');
             e.target.classList.add('active');
-            document.getElementById(`tab-${e.target.dataset.tab}`).classList.add('active');
+            document.getElementById(\`tab-\${e.target.dataset.tab}\`).classList.add('active');
           });
         });
 
@@ -184,8 +178,6 @@
 
         document.getElementById('modal-cancel').onclick = () => this.closeModal();
         document.getElementById('modal-save').onclick = () => this.saveEvent();
-
-        // Ferme la modale si clic sur le backdrop
         document.querySelector('.modal-backdrop').onclick = () => this.closeModal();
 
         document.querySelectorAll('input[name="theme"]').forEach(radio => {
@@ -198,18 +190,17 @@
         dateLabel.title = 'Cliquer pour choisir une date';
         dateLabel.onclick = () => this.openDatePicker();
 
-        // Gère les onglets Jour / Semaine / Mois des stats
-        document.querySelectorAll('#stats-tabs .tab').forEach(btn => {
+        // Gère les onglets Jour/Semaine/Mois
+        document.querySelectorAll('.stats-tab').forEach(btn => {
           btn.addEventListener('click', (e) => {
-            document.querySelectorAll('#stats-tabs .tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.stats-tab').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
-            this.currentStatsPeriod = e.target.dataset.period;
+            this.statsPeriod = e.target.dataset.period;
             this.updateSummary();
           });
         });
       }
 
-      // Synchronise et fusionne les enfants locaux/distants
       async syncAndMergeChildren() {
         let localChildren = JSON.parse(localStorage.getItem('children') || '[]');
         let remoteChildren = [];
@@ -243,14 +234,13 @@
         document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
       }
 
-      // Remplit le dropdown de sélection d'enfant
       renderChildrenSelect(children) {
         const select = document.getElementById('child-select');
         select.innerHTML = '<option value="">Aucun enfant</option>';
         children.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.id;
-          opt.textContent = `${c.name} (${c.age || 0} mois)`;
+          opt.textContent = \`\${c.name} (\${c.age || 0} mois)\`;
           select.appendChild(opt);
         });
 
@@ -269,25 +259,23 @@
         };
       }
 
-      // Affiche la liste des enfants dans paramètres
       renderChildrenList(children) {
         const container = document.getElementById('children-list');
         if (!children.length) {
           container.innerHTML = '<p class="empty-state">Aucun enfant. Ajoute-en un !</p>';
           return;
         }
-        container.innerHTML = children.map(child => `
+        container.innerHTML = children.map(child => \`
           <div class="child-item">
             <div>
-              <strong>${child.name}</strong>
-              <span class="child-age">${child.age || 0} mois</span>
+              <strong>\${child.name}</strong>
+              <span class="child-age">\${child.age || 0} mois</span>
             </div>
-            <button class="btn-danger" onclick="app.deleteChild('${child.id}')">×</button>
+            <button class="btn-danger" onclick="app.deleteChild('\${child.id}')">×</button>
           </div>
-        `).join('');
+        \`).join('');
       }
 
-      // Ajoute un enfant
       async addChild() {
         const name = document.getElementById('child-name').value.trim();
         const age = parseInt(document.getElementById('child-age').value) || 0;
@@ -321,7 +309,6 @@
         this.updateSummary();
       }
 
-      // Supprime un enfant
       async deleteChild(id) {
         if (!confirm('Supprimer définitivement cet enfant ?')) return;
 
@@ -353,14 +340,12 @@
         this.updateSummary();
       }
 
-      // Met à jour le nom de l'enfant dans le header
       updateHeader() {
         const children = JSON.parse(localStorage.getItem('children') || '[]');
         const child = children.find(c => c.id === this.currentChildId);
         document.getElementById('currentChildName').textContent = child ? child.name : 'Aucun enfant';
       }
 
-      // Revient à aujourd'hui
       setToday() {
         this.currentDate = new Date();
         this.renderDate();
@@ -369,7 +354,6 @@
         this.updateSummary();
       }
 
-      // Change la date de delta jours
       changeDay(delta) {
         this.currentDate.setDate(this.currentDate.getDate() + delta);
         this.renderDate();
@@ -378,7 +362,6 @@
         this.updateSummary();
       }
 
-      // Affiche la date formatée
       renderDate() {
         const full = this.currentDate.toLocaleDateString('fr-FR', {
           weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -390,7 +373,6 @@
         document.getElementById('currentDateLabel').textContent = short;
       }
 
-      // Ouvre un date picker natif
       openDatePicker() {
         let input = document.createElement('input');
         input.type = 'date';
@@ -411,19 +393,18 @@
         input.onblur = () => setTimeout(() => input.remove(), 100);
       }
 
-      // Charge les événements du jour depuis localStorage et backend
       loadDayEvents() {
         if (!this.currentChildId) {
           this.events = {};
           return;
         }
         const dateKey = this.currentDate.toISOString().slice(0, 10);
-        const key = `day_${this.currentChildId}_${dateKey}`;
+        const key = \`day_\${this.currentChildId}_\${dateKey}\`;
         const saved = localStorage.getItem(key);
         this.events = saved ? JSON.parse(saved) : {};
 
         if (navigator.onLine) {
-          fetch(`/api/suivi-bebe/day?childId=${encodeURIComponent(this.currentChildId)}&date=${encodeURIComponent(dateKey)}`)
+          fetch(\`/api/suivi-bebe/day?childId=\${encodeURIComponent(this.currentChildId)}&date=\${encodeURIComponent(dateKey)}\`)
             .then(r => r.ok ? r.json() : null)
             .then(data => {
               if (data && data.ok && data.data && data.data.events) {
@@ -437,15 +418,13 @@
         }
       }
 
-      // Sauvegarde les événements en localStorage
       saveDayLocal() {
         if (!this.currentChildId) return;
         const dateKey = this.currentDate.toISOString().slice(0, 10);
-        const key = `day_${this.currentChildId}_${dateKey}`;
+        const key = \`day_\${this.currentChildId}_\${dateKey}\`;
         localStorage.setItem(key, JSON.stringify(this.events));
       }
 
-      // Synchronise avec le backend
       syncDayRemote() {
         if (!navigator.onLine || !this.currentChildId) return;
         const dateKey = this.currentDate.toISOString().slice(0, 10);
@@ -460,7 +439,6 @@
         }).catch(() => {});
       }
 
-      // Affiche les cartes de la journée
       renderCards() {
         const cards = [
           { id: 'coucher',      title: 'Coucher soir',         color: 'blue'   },
@@ -481,13 +459,13 @@
               details = 'Aucun réveil';
               timeLabel = '—';
             } else if (e.count) {
-              details = `${e.count} réveils ${e.notes || ''}`;
+              details = \`\${e.count} réveils \${e.notes || ''}\`;
             } else {
               details = e.notes || '';
             }
           } else if (card.id === 'repas' && e.meal) {
             const map = { bien: 'Bien mangé', peu: 'Peu mangé', rien: 'Rien mangé' };
-            details = `${map[e.meal] || ''} ${e.notes || ''}`.trim();
+            details = \`\${map[e.meal] || ''} \${e.notes || ''}\`.trim();
           } else if (card.id === 'sieste-matin' || card.id === 'sieste-aprem') {
             if (e.noNap) {
               details = 'Aucune sieste';
@@ -499,107 +477,105 @@
             details = e.notes || '';
           }
 
-          return `
-            <div class="event-card ${card.color}" onclick="app.openEventModal('${card.id}')">
-              <div class="card-title">${card.title}</div>
-              <div class="card-time">${timeLabel}</div>
-              <div class="card-details">${details}</div>
+          return \`
+            <div class="event-card \${card.color}" onclick="app.openEventModal('\${card.id}')">
+              <div class="card-title">\${card.title}</div>
+              <div class="card-time">\${timeLabel}</div>
+              <div class="card-details">\${details}</div>
             </div>
-          `;
+          \`;
         }).join('');
       }
 
-      // Ouvre la modale de saisie
       openEventModal(type) {
         this.currentEventType = type;
         const e = this.events[type] || {};
         let body = '';
 
         if (['coucher', 'reveil-matin', 'sieste-matin', 'sieste-aprem'].includes(type)) {
-          body += `
+          body += \`
             <div class="time-input">
               <label>Heure</label>
-              <input type="time" id="event-time" value="${e.time || ''}">
+              <input type="time" id="event-time" value="\${e.time || ''}">
             </div>
-          `;
+          \`;
         }
 
         // Toggles "Aucune sieste" / "Aucun réveil"
         if (type === 'sieste-matin') {
-          body += `
+          body += \`
             <div class="segment-input">
               <label>Aucune sieste ce matin</label>
               <div class="segments">
                 <label>
-                  <input type="checkbox" id="no-nap-toggle" ${e.noNap ? 'checked' : ''}>
+                  <input type="checkbox" id="no-nap-toggle" \${e.noNap ? 'checked' : ''}>
                   Aucune
                 </label>
               </div>
             </div>
-          `;
+          \`;
         } else if (type === 'sieste-aprem') {
-          body += `
+          body += \`
             <div class="segment-input">
               <label>Aucune sieste cet après-midi</label>
               <div class="segments">
                 <label>
-                  <input type="checkbox" id="no-nap-toggle" ${e.noNap ? 'checked' : ''}>
+                  <input type="checkbox" id="no-nap-toggle" \${e.noNap ? 'checked' : ''}>
                   Aucune
                 </label>
               </div>
             </div>
-          `;
+          \`;
         } else if (type === 'reveils') {
-          body += `
+          body += \`
             <div class="segment-input">
               <label>Aucun réveil cette nuit</label>
               <div class="segments">
                 <label>
-                  <input type="checkbox" id="no-wake-toggle" ${e.noWake ? 'checked' : ''}>
+                  <input type="checkbox" id="no-wake-toggle" \${e.noWake ? 'checked' : ''}>
                   Aucun
                 </label>
               </div>
             </div>
-          `;
+          \`;
         }
 
         if (type === 'reveils') {
-          body += `
+          body += \`
             <div class="number-input">
               <label>Nombre de réveils</label>
-              <input type="number" id="event-count" min="0" max="10" value="${e.count || ''}">
+              <input type="number" id="event-count" min="0" max="10" value="\${e.count || ''}">
             </div>
             <div class="time-input">
               <label>Heure moyenne</label>
-              <input type="time" id="event-time" value="${e.time || ''}">
+              <input type="time" id="event-time" value="\${e.time || ''}">
             </div>
-          `;
+          \`;
         } else if (type === 'repas') {
-          body += `
+          body += \`
             <div class="segment-input">
               <label>Quantité mangée</label>
               <div class="segments">
-                <label><input type="radio" name="meal" value="bien" ${e.meal === 'bien' ? 'checked' : ''}> Bien</label>
-                <label><input type="radio" name="meal" value="peu" ${e.meal === 'peu' ? 'checked' : ''}> Peu</label>
-                <label><input type="radio" name="meal" value="rien" ${e.meal === 'rien' ? 'checked' : ''}> Rien</label>
+                <label><input type="radio" name="meal" value="bien" \${e.meal === 'bien' ? 'checked' : ''}> Bien</label>
+                <label><input type="radio" name="meal" value="peu" \${e.meal === 'peu' ? 'checked' : ''}> Peu</label>
+                <label><input type="radio" name="meal" value="rien" \${e.meal === 'rien' ? 'checked' : ''}> Rien</label>
               </div>
             </div>
-          `;
+          \`;
         }
 
-        body += `
+        body += \`
           <div class="notes-input">
             <label>Notes</label>
-            <textarea id="event-notes" placeholder="Commentaires...">${e.notes || ''}</textarea>
+            <textarea id="event-notes" placeholder="Commentaires...">\${e.notes || ''}</textarea>
           </div>
-        `;
+        \`;
 
-        document.getElementById('modal-title').textContent = `Événement : ${type.replace('-', ' ')}`;
+        document.getElementById('modal-title').textContent = \`Événement : \${type.replace('-', ' ')}\`;
         document.getElementById('modal-body').innerHTML = body;
         document.getElementById('modal').classList.add('active');
       }
 
-      // Sauvegarde l'événement depuis la modale
       saveEvent() {
         const e = this.events[this.currentEventType] || {};
 
@@ -637,23 +613,22 @@
         this.closeModal();
       }
 
-      // Ferme la modale
       closeModal() {
         document.getElementById('modal').classList.remove('active');
       }
 
-      // Met à jour les statistiques selon la période
+      // Met à jour les stats selon la période active
       updateSummary() {
-        if (this.currentStatsPeriod === 'day') {
+        if (this.statsPeriod === 'day') {
           this.updateSummaryDay();
-        } else if (this.currentStatsPeriod === 'week') {
-          this.updateSummaryWeek();
-        } else if (this.currentStatsPeriod === 'month') {
-          this.updateSummaryMonth();
+        } else if (this.statsPeriod === 'week') {
+          this.updateSummaryPeriod(7, 'Semaine');
+        } else if (this.statsPeriod === 'month') {
+          this.updateSummaryPeriod(30, 'Mois');
         }
       }
 
-      // Affiche les stats du jour courant
+      // Stats du jour courant
       updateSummaryDay() {
         let nightMinutes = 0;
         let napsMinutes = 0;
@@ -662,7 +637,7 @@
         const fmt = (m) => {
           const h = Math.floor(m / 60);
           const mm = m % 60;
-          return `${h}h ${mm.toString().padStart(2, '0')}m`;
+          return \`\${h}h \${mm.toString().padStart(2, '0')}m\`;
         };
 
         if (this.events.coucher?.time && this.events['reveil-matin']?.time) {
@@ -677,7 +652,7 @@
         ['sieste-matin', 'sieste-aprem'].forEach(id => {
           const ev = this.events[id];
           if (!ev?.noNap && ev?.time) {
-            napsMinutes += 90; // 1h30 par sieste
+            napsMinutes += 90;
           }
         });
 
@@ -686,35 +661,28 @@
         document.getElementById('naps-sleep').textContent = fmt(napsMinutes);
         document.getElementById('total-sleep').textContent = fmt(total);
 
+        // Labels jour
+        document.getElementById('total-label').textContent = 'Sommeil total';
+        document.getElementById('night-label').textContent = 'Nuit';
+        document.getElementById('naps-label').textContent = 'Siestes';
+        document.getElementById('quality-label').textContent = 'Qualité nuit';
+
         const badge = document.getElementById('quality-badge');
         if (wakeups === 0) badge.textContent = '🟢 Excellente';
         else if (wakeups <= 2) badge.textContent = '🟡 Bonne';
         else badge.textContent = '🔴 Médiocre';
-
-        // Cache le bloc statsDisplay pour le jour
-        document.getElementById('statsDisplay').innerHTML = '';
       }
 
-      // Affiche les stats de la semaine (7 derniers jours)
-      updateSummaryWeek() {
-        const dates = this.getLastNDates(7);
-        this.computeAndRenderAverages(dates);
-      }
-
-      // Affiche les stats du mois (30 derniers jours)
-      updateSummaryMonth() {
-        const dates = this.getLastNDates(30);
-        this.computeAndRenderAverages(dates);
-      }
-
-      // Calcule et affiche les moyennes pour une plage de dates
-      computeAndRenderAverages(dates) {
+      // Stats sur une période (semaine ou mois)
+      updateSummaryPeriod(days, label) {
+        const dates = this.getLastNDates(days);
         const results = [];
         const childId = this.currentChildId;
+
         if (!childId) return;
 
         dates.forEach(dateStr => {
-          const key = `day_${childId}_${dateStr}`;
+          const key = \`day_\${childId}_\${dateStr}\`;
           const stored = localStorage.getItem(key);
           if (!stored) return;
 
@@ -745,7 +713,7 @@
         const fmt = (m) => {
           const h = Math.floor(m / 60);
           const mm = m % 60;
-          return `${h}h ${mm.toString().padStart(2, '0')}m`;
+          return \`\${h}h \${mm.toString().padStart(2, '0')}m\`;
         };
 
         if (!results.length) {
@@ -753,7 +721,6 @@
           document.getElementById('naps-sleep').textContent = '--h --m';
           document.getElementById('total-sleep').textContent = '--h --m';
           document.getElementById('quality-badge').textContent = '–';
-          document.getElementById('statsDisplay').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">Aucune donnée disponible pour cette période</p>';
           return;
         }
 
@@ -767,40 +734,23 @@
         const avgTotal = avgNight + avgNaps;
         const avgWake = totalWake / count;
 
-        // Met à jour les 4 cartes du haut avec les moyennes
         document.getElementById('night-sleep').textContent = fmt(avgNight);
         document.getElementById('naps-sleep').textContent = fmt(avgNaps);
         document.getElementById('total-sleep').textContent = fmt(avgTotal);
+
+        // Labels moyennes
+        document.getElementById('total-label').textContent = 'Sommeil total moyen';
+        document.getElementById('night-label').textContent = 'Nuit moyenne';
+        document.getElementById('naps-label').textContent = 'Siestes moyennes';
+        document.getElementById('quality-label').textContent = 'Qualité moyenne nuit';
 
         const badge = document.getElementById('quality-badge');
         if (avgWake === 0) badge.textContent = '🟢 Excellente';
         else if (avgWake <= 2) badge.textContent = '🟡 Bonne';
         else badge.textContent = '🔴 Médiocre';
-
-        // Affiche le détail dans statsDisplay
-        document.getElementById('statsDisplay').innerHTML = `
-          <div class="stats-grid">
-            <div class="summary-card">
-              <div class="summary-value">${count}</div>
-              <div class="summary-label">Jours analysés</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-value">${fmt(avgNight)}</div>
-              <div class="summary-label">Nuit moyenne</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-value">${fmt(avgNaps)}</div>
-              <div class="summary-label">Siestes moyennes</div>
-            </div>
-            <div class="summary-card">
-              <div class="summary-value">${avgWake.toFixed(1)}</div>
-              <div class="summary-label">Réveils moyens / nuit</div>
-            </div>
-          </div>
-        `;
       }
 
-      // Retourne les N derniers jours au format ISO
+      // Retourne les N derniers jours
       getLastNDates(n) {
         const dates = [];
         const base = new Date(this.currentDate);
@@ -813,33 +763,28 @@
         return dates;
       }
 
-      // Force une synchronisation complète
       async syncAll() {
         await this.syncAndMergeChildren();
         this.loadDayEvents();
         this.syncDayRemote();
-        this.updateSummary();
       }
 
-      // Modifie le thème préféré
       setTheme(theme) {
         this.theme = theme;
         localStorage.setItem('theme', theme);
         this.applyTheme();
       }
 
-      // Applique le thème effectif
       applyTheme() {
         let themeToApply = this.theme;
         if (this.theme === 'auto') {
           themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', themeToApply);
-        const radio = document.querySelector(`input[name="theme"][value="${this.theme}"]`);
+        const radio = document.querySelector(\`input[name="theme"][value="\${this.theme}"]\`);
         if (radio) radio.checked = true;
       }
 
-      // Écoute les changements système de thème
       setupThemeListener() {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
           if (this.theme === 'auto') this.applyTheme();

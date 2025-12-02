@@ -5,6 +5,8 @@
   <title>Suivi sommeil bébé</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
   <meta name="theme-color" content="#f0f4ff">
   <link rel="stylesheet" href="css/main.css">
 </head>
@@ -139,7 +141,7 @@
         this.currentEventType = null;
         this.theme = localStorage.getItem('theme') || 'auto';
         this.lastSync = localStorage.getItem('lastSync') || null;
-        this.currentStatsPeriod = 'day'; // Jour / Semaine / Mois
+        this.currentStatsPeriod = 'day'; // Période stats active
 
         this.init();
       }
@@ -152,11 +154,11 @@
         this.renderCards();
         this.updateHeader();
         this.applyTheme();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
         this.setupThemeListener();
       }
 
-      // Gère tout le binding des événements DOM
+      // Attache tous les événements DOM
       bindEvents() {
         document.querySelectorAll('.tab-btn').forEach(btn => {
           btn.addEventListener('click', (e) => {
@@ -183,6 +185,9 @@
         document.getElementById('modal-cancel').onclick = () => this.closeModal();
         document.getElementById('modal-save').onclick = () => this.saveEvent();
 
+        // Ferme la modale si clic sur le backdrop
+        document.querySelector('.modal-backdrop').onclick = () => this.closeModal();
+
         document.querySelectorAll('input[name="theme"]').forEach(radio => {
           radio.addEventListener('change', event => this.setTheme(event.target.value));
         });
@@ -199,12 +204,12 @@
             document.querySelectorAll('#stats-tabs .tab').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             this.currentStatsPeriod = e.target.dataset.period;
-            this.updateSummaryForCurrentPeriod();
+            this.updateSummary();
           });
         });
       }
 
-      // Synchronise puis fusionne les enfants locaux et distants
+      // Synchronise et fusionne les enfants locaux/distants
       async syncAndMergeChildren() {
         let localChildren = JSON.parse(localStorage.getItem('children') || '[]');
         let remoteChildren = [];
@@ -230,15 +235,15 @@
         });
 
         localStorage.setItem('children', JSON.stringify(merged));
-        
+
         this.renderChildrenSelect(merged);
         this.renderChildrenList(merged);
-        
+
         localStorage.setItem('lastSync', new Date().toISOString());
         document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
       }
 
-      // Met à jour la liste déroulante des enfants
+      // Remplit le dropdown de sélection d'enfant
       renderChildrenSelect(children) {
         const select = document.getElementById('child-select');
         select.innerHTML = '<option value="">Aucun enfant</option>';
@@ -260,11 +265,11 @@
           this.updateHeader();
           this.loadDayEvents();
           this.renderCards();
-          this.updateSummaryForCurrentPeriod();
+          this.updateSummary();
         };
       }
 
-      // Affiche la liste des enfants dans les paramètres
+      // Affiche la liste des enfants dans paramètres
       renderChildrenList(children) {
         const container = document.getElementById('children-list');
         if (!children.length) {
@@ -282,7 +287,7 @@
         `).join('');
       }
 
-      // Ajoute un enfant localement et à distance
+      // Ajoute un enfant
       async addChild() {
         const name = document.getElementById('child-name').value.trim();
         const age = parseInt(document.getElementById('child-age').value) || 0;
@@ -308,15 +313,15 @@
 
         this.currentChildId = child.id;
         localStorage.setItem('currentChildId', this.currentChildId);
-        
+
         await this.syncAndMergeChildren();
         this.updateHeader();
         this.loadDayEvents();
         this.renderCards();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
       }
 
-      // Supprime un enfant localement et dans Redis
+      // Supprime un enfant
       async deleteChild(id) {
         if (!confirm('Supprimer définitivement cet enfant ?')) return;
 
@@ -345,35 +350,35 @@
         this.updateHeader();
         this.loadDayEvents();
         this.renderCards();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
       }
 
-      // Met à jour le header avec le nom de l'enfant courant
+      // Met à jour le nom de l'enfant dans le header
       updateHeader() {
         const children = JSON.parse(localStorage.getItem('children') || '[]');
         const child = children.find(c => c.id === this.currentChildId);
         document.getElementById('currentChildName').textContent = child ? child.name : 'Aucun enfant';
       }
 
-      // Replace la date sur aujourd'hui
+      // Revient à aujourd'hui
       setToday() {
         this.currentDate = new Date();
         this.renderDate();
         this.loadDayEvents();
         this.renderCards();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
       }
 
-      // Décale la date de delta jours
+      // Change la date de delta jours
       changeDay(delta) {
         this.currentDate.setDate(this.currentDate.getDate() + delta);
         this.renderDate();
         this.loadDayEvents();
         this.renderCards();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
       }
 
-      // Affiche la date au format lisible
+      // Affiche la date formatée
       renderDate() {
         const full = this.currentDate.toLocaleDateString('fr-FR', {
           weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -385,7 +390,7 @@
         document.getElementById('currentDateLabel').textContent = short;
       }
 
-      // Ouvre un sélecteur de date natif
+      // Ouvre un date picker natif
       openDatePicker() {
         let input = document.createElement('input');
         input.type = 'date';
@@ -400,7 +405,7 @@
           this.renderDate();
           this.loadDayEvents();
           this.renderCards();
-          this.updateSummaryForCurrentPeriod();
+          this.updateSummary();
           input.remove();
         };
         input.onblur = () => setTimeout(() => input.remove(), 100);
@@ -425,14 +430,14 @@
                 this.events = data.data.events;
                 this.saveDayLocal();
                 this.renderCards();
-                this.updateSummaryForCurrentPeriod();
+                this.updateSummary();
               }
             })
             .catch(() => {});
         }
       }
 
-      // Sauvegarde les événements du jour en localStorage
+      // Sauvegarde les événements en localStorage
       saveDayLocal() {
         if (!this.currentChildId) return;
         const dateKey = this.currentDate.toISOString().slice(0, 10);
@@ -440,7 +445,7 @@
         localStorage.setItem(key, JSON.stringify(this.events));
       }
 
-      // Envoie les événements du jour au backend
+      // Synchronise avec le backend
       syncDayRemote() {
         if (!navigator.onLine || !this.currentChildId) return;
         const dateKey = this.currentDate.toISOString().slice(0, 10);
@@ -455,7 +460,7 @@
         }).catch(() => {});
       }
 
-      // Rend les cartes jour à partir des événements
+      // Affiche les cartes de la journée
       renderCards() {
         const cards = [
           { id: 'coucher',      title: 'Coucher soir',         color: 'blue'   },
@@ -469,9 +474,12 @@
         c.innerHTML = cards.map(card => {
           const e = this.events[card.id] || {};
           let details = '';
+          let timeLabel = e.time || 'Non renseigné';
+
           if (card.id === 'reveils') {
             if (e.noWake) {
               details = 'Aucun réveil';
+              timeLabel = '—';
             } else if (e.count) {
               details = `${e.count} réveils ${e.notes || ''}`;
             } else {
@@ -483,15 +491,14 @@
           } else if (card.id === 'sieste-matin' || card.id === 'sieste-aprem') {
             if (e.noNap) {
               details = 'Aucune sieste';
+              timeLabel = '—';
             } else {
               details = e.notes || '';
             }
           } else {
             details = e.notes || '';
           }
-          const timeLabel = (card.id === 'reveils' && e.noWake) || ((card.id === 'sieste-matin' || card.id === 'sieste-aprem') && e.noNap)
-            ? '—'
-            : (e.time || 'Non renseigné');
+
           return `
             <div class="event-card ${card.color}" onclick="app.openEventModal('${card.id}')">
               <div class="card-title">${card.title}</div>
@@ -502,7 +509,7 @@
         }).join('');
       }
 
-      // Ouvre la modale de saisie selon le type d'événement
+      // Ouvre la modale de saisie
       openEventModal(type) {
         this.currentEventType = type;
         const e = this.events[type] || {};
@@ -517,7 +524,7 @@
           `;
         }
 
-        // Ajoute les toggles "Aucune sieste" / "Aucun réveil"
+        // Toggles "Aucune sieste" / "Aucun réveil"
         if (type === 'sieste-matin') {
           body += `
             <div class="segment-input">
@@ -592,7 +599,7 @@
         document.getElementById('modal').classList.add('active');
       }
 
-      // Sauvegarde l'événement courant depuis la modale
+      // Sauvegarde l'événement depuis la modale
       saveEvent() {
         const e = this.events[this.currentEventType] || {};
 
@@ -626,7 +633,7 @@
         this.saveDayLocal();
         this.syncDayRemote();
         this.renderCards();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
         this.closeModal();
       }
 
@@ -635,23 +642,19 @@
         document.getElementById('modal').classList.remove('active');
       }
 
-      // Met à jour les statistiques selon la période sélectionnée
-      updateSummaryForCurrentPeriod() {
+      // Met à jour les statistiques selon la période
+      updateSummary() {
         if (this.currentStatsPeriod === 'day') {
-          this.updateSummaryForSingleDay(this.currentDate);
+          this.updateSummaryDay();
         } else if (this.currentStatsPeriod === 'week') {
-          this.updateSummaryForRange(this.getLastNDates(7));
+          this.updateSummaryWeek();
         } else if (this.currentStatsPeriod === 'month') {
-          this.updateSummaryForRange(this.getLastNDates(30));
+          this.updateSummaryMonth();
         }
       }
 
-      // Met à jour les stats pour un seul jour (comportement historique)
-      updateSummaryForSingleDay(dateObj) {
-        const backupDate = this.currentDate;
-        this.currentDate = new Date(dateObj);
-        this.loadDayEvents();
-
+      // Affiche les stats du jour courant
+      updateSummaryDay() {
         let nightMinutes = 0;
         let napsMinutes = 0;
         const wakeups = this.events.reveils?.noWake ? 0 : (parseInt(this.events.reveils?.count) || 0);
@@ -673,10 +676,8 @@
 
         ['sieste-matin', 'sieste-aprem'].forEach(id => {
           const ev = this.events[id];
-          if (ev?.noNap) {
-            // Compte 0 volontairement, mais n'ajoute pas de minutes
-          } else if (ev?.time) {
-            napsMinutes += 90;
+          if (!ev?.noNap && ev?.time) {
+            napsMinutes += 90; // 1h30 par sieste
           }
         });
 
@@ -690,19 +691,25 @@
         else if (wakeups <= 2) badge.textContent = '🟡 Bonne';
         else badge.textContent = '🔴 Médiocre';
 
-        // Met aussi à jour le bloc stats global pour rester cohérent
-        this.renderStatsAverages([{ nightMinutes, napsMinutes, wakeups }]);
-
-        this.currentDate = backupDate;
-        this.renderDate();
-        this.loadDayEvents();
+        // Cache le bloc statsDisplay pour le jour
+        document.getElementById('statsDisplay').innerHTML = '';
       }
 
-      // Met à jour les stats sur une plage de dates (semaine / mois)
-      updateSummaryForRange(dates) {
-        const results = [];
+      // Affiche les stats de la semaine (7 derniers jours)
+      updateSummaryWeek() {
+        const dates = this.getLastNDates(7);
+        this.computeAndRenderAverages(dates);
+      }
 
-        const backupChild = this.currentChildId;
+      // Affiche les stats du mois (30 derniers jours)
+      updateSummaryMonth() {
+        const dates = this.getLastNDates(30);
+        this.computeAndRenderAverages(dates);
+      }
+
+      // Calcule et affiche les moyennes pour une plage de dates
+      computeAndRenderAverages(dates) {
+        const results = [];
         const childId = this.currentChildId;
         if (!childId) return;
 
@@ -727,9 +734,7 @@
 
           ['sieste-matin', 'sieste-aprem'].forEach(id => {
             const ev = events[id];
-            if (ev?.noNap) {
-              // 0 volontaire
-            } else if (ev?.time) {
+            if (!ev?.noNap && ev?.time) {
               napsMinutes += 90;
             }
           });
@@ -737,20 +742,6 @@
           results.push({ nightMinutes, napsMinutes, wakeups });
         });
 
-        if (!results.length) {
-          document.getElementById('night-sleep').textContent = '--h --m';
-          document.getElementById('naps-sleep').textContent = '--h --m';
-          document.getElementById('total-sleep').textContent = '--h --m';
-          document.getElementById('quality-badge').textContent = '–';
-          this.renderStatsAverages([]);
-          return;
-        }
-
-        this.renderStatsAverages(results);
-      }
-
-      // Rend les stats moyennes dans le bloc principal + statsDisplay
-      renderStatsAverages(results) {
         const fmt = (m) => {
           const h = Math.floor(m / 60);
           const mm = m % 60;
@@ -758,7 +749,11 @@
         };
 
         if (!results.length) {
-          document.getElementById('statsDisplay').innerHTML = '';
+          document.getElementById('night-sleep').textContent = '--h --m';
+          document.getElementById('naps-sleep').textContent = '--h --m';
+          document.getElementById('total-sleep').textContent = '--h --m';
+          document.getElementById('quality-badge').textContent = '–';
+          document.getElementById('statsDisplay').innerHTML = '<p style="text-align:center;color:var(--text-muted);padding:20px;">Aucune donnée disponible pour cette période</p>';
           return;
         }
 
@@ -772,6 +767,7 @@
         const avgTotal = avgNight + avgNaps;
         const avgWake = totalWake / count;
 
+        // Met à jour les 4 cartes du haut avec les moyennes
         document.getElementById('night-sleep').textContent = fmt(avgNight);
         document.getElementById('naps-sleep').textContent = fmt(avgNaps);
         document.getElementById('total-sleep').textContent = fmt(avgTotal);
@@ -781,11 +777,12 @@
         else if (avgWake <= 2) badge.textContent = '🟡 Bonne';
         else badge.textContent = '🔴 Médiocre';
 
+        // Affiche le détail dans statsDisplay
         document.getElementById('statsDisplay').innerHTML = `
           <div class="stats-grid">
             <div class="summary-card">
-              <div class="summary-value">${fmt(avgTotal)}</div>
-              <div class="summary-label">Sommeil total moyen</div>
+              <div class="summary-value">${count}</div>
+              <div class="summary-label">Jours analysés</div>
             </div>
             <div class="summary-card">
               <div class="summary-value">${fmt(avgNight)}</div>
@@ -797,13 +794,13 @@
             </div>
             <div class="summary-card">
               <div class="summary-value">${avgWake.toFixed(1)}</div>
-              <div class="summary-label">Réveils moyens</div>
+              <div class="summary-label">Réveils moyens / nuit</div>
             </div>
           </div>
         `;
       }
 
-      // Retourne la liste des N derniers jours (format ISO)
+      // Retourne les N derniers jours au format ISO
       getLastNDates(n) {
         const dates = [];
         const base = new Date(this.currentDate);
@@ -816,12 +813,12 @@
         return dates;
       }
 
-      // Force une synchronisation globale
+      // Force une synchronisation complète
       async syncAll() {
         await this.syncAndMergeChildren();
         this.loadDayEvents();
         this.syncDayRemote();
-        this.updateSummaryForCurrentPeriod();
+        this.updateSummary();
       }
 
       // Modifie le thème préféré
@@ -831,7 +828,7 @@
         this.applyTheme();
       }
 
-      // Applique le thème effectif (clair/sombre/auto)
+      // Applique le thème effectif
       applyTheme() {
         let themeToApply = this.theme;
         if (this.theme === 'auto') {
@@ -842,7 +839,7 @@
         if (radio) radio.checked = true;
       }
 
-      // Met à jour le thème si le système change et que le mode auto est actif
+      // Écoute les changements système de thème
       setupThemeListener() {
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
           if (this.theme === 'auto') this.applyTheme();

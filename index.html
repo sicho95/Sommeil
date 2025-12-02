@@ -137,7 +137,7 @@
         this.currentEventType = null;
         this.theme = localStorage.getItem('theme') || 'auto';
         this.lastSync = localStorage.getItem('lastSync') || null;
-        this.statsPeriod = 'day'; // Période stats active
+        this.statsPeriod = 'day';
         this.init();
       }
 
@@ -159,7 +159,7 @@
             document.querySelector('.tab-btn.active').classList.remove('active');
             document.querySelector('.tab-content.active').classList.remove('active');
             e.target.classList.add('active');
-            document.getElementById(\`tab-\${e.target.dataset.tab}\`).classList.add('active');
+            document.getElementById('tab-' + e.target.dataset.tab).classList.add('active');
           });
         });
 
@@ -190,7 +190,6 @@
         dateLabel.title = 'Cliquer pour choisir une date';
         dateLabel.onclick = () => this.openDatePicker();
 
-        // Gère les onglets Jour/Semaine/Mois
         document.querySelectorAll('.stats-tab').forEach(btn => {
           btn.addEventListener('click', (e) => {
             document.querySelectorAll('.stats-tab').forEach(b => b.classList.remove('active'));
@@ -226,10 +225,10 @@
         });
 
         localStorage.setItem('children', JSON.stringify(merged));
-
+        
         this.renderChildrenSelect(merged);
         this.renderChildrenList(merged);
-
+        
         localStorage.setItem('lastSync', new Date().toISOString());
         document.getElementById('sync-status').textContent = 'Dernière sync : ' + new Date().toLocaleTimeString();
       }
@@ -240,7 +239,7 @@
         children.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.id;
-          opt.textContent = \`\${c.name} (\${c.age || 0} mois)\`;
+          opt.textContent = c.name + ' (' + (c.age || 0) + ' mois)';
           select.appendChild(opt);
         });
 
@@ -265,15 +264,15 @@
           container.innerHTML = '<p class="empty-state">Aucun enfant. Ajoute-en un !</p>';
           return;
         }
-        container.innerHTML = children.map(child => \`
-          <div class="child-item">
-            <div>
-              <strong>\${child.name}</strong>
-              <span class="child-age">\${child.age || 0} mois</span>
-            </div>
-            <button class="btn-danger" onclick="app.deleteChild('\${child.id}')">×</button>
-          </div>
-        \`).join('');
+        container.innerHTML = children.map(child => 
+          '<div class="child-item">' +
+            '<div>' +
+              '<strong>' + child.name + '</strong>' +
+              '<span class="child-age">' + (child.age || 0) + ' mois</span>' +
+            '</div>' +
+            '<button class="btn-danger" onclick="app.deleteChild(\'' + child.id + '\')">×</button>' +
+          '</div>'
+        ).join('');
       }
 
       async addChild() {
@@ -301,7 +300,7 @@
 
         this.currentChildId = child.id;
         localStorage.setItem('currentChildId', this.currentChildId);
-
+        
         await this.syncAndMergeChildren();
         this.updateHeader();
         this.loadDayEvents();
@@ -399,12 +398,12 @@
           return;
         }
         const dateKey = this.currentDate.toISOString().slice(0, 10);
-        const key = \`day_\${this.currentChildId}_\${dateKey}\`;
+        const key = 'day_' + this.currentChildId + '_' + dateKey;
         const saved = localStorage.getItem(key);
         this.events = saved ? JSON.parse(saved) : {};
 
         if (navigator.onLine) {
-          fetch(\`/api/suivi-bebe/day?childId=\${encodeURIComponent(this.currentChildId)}&date=\${encodeURIComponent(dateKey)}\`)
+          fetch('/api/suivi-bebe/day?childId=' + encodeURIComponent(this.currentChildId) + '&date=' + encodeURIComponent(dateKey))
             .then(r => r.ok ? r.json() : null)
             .then(data => {
               if (data && data.ok && data.data && data.data.events) {
@@ -421,7 +420,7 @@
       saveDayLocal() {
         if (!this.currentChildId) return;
         const dateKey = this.currentDate.toISOString().slice(0, 10);
-        const key = \`day_\${this.currentChildId}_\${dateKey}\`;
+        const key = 'day_' + this.currentChildId + '_' + dateKey;
         localStorage.setItem(key, JSON.stringify(this.events));
       }
 
@@ -459,13 +458,14 @@
               details = 'Aucun réveil';
               timeLabel = '—';
             } else if (e.count) {
-              details = \`\${e.count} réveils \${e.notes || ''}\`;
+              details = e.count + ' réveils ' + (e.notes || '');
             } else {
               details = e.notes || '';
             }
           } else if (card.id === 'repas' && e.meal) {
             const map = { bien: 'Bien mangé', peu: 'Peu mangé', rien: 'Rien mangé' };
-            details = \`\${map[e.meal] || ''} \${e.notes || ''}\`.trim();
+            details = (map[e.meal] || '') + ' ' + (e.notes || '');
+            details = details.trim();
           } else if (card.id === 'sieste-matin' || card.id === 'sieste-aprem') {
             if (e.noNap) {
               details = 'Aucune sieste';
@@ -477,13 +477,11 @@
             details = e.notes || '';
           }
 
-          return \`
-            <div class="event-card \${card.color}" onclick="app.openEventModal('\${card.id}')">
-              <div class="card-title">\${card.title}</div>
-              <div class="card-time">\${timeLabel}</div>
-              <div class="card-details">\${details}</div>
-            </div>
-          \`;
+          return '<div class="event-card ' + card.color + '" onclick="app.openEventModal(\'' + card.id + '\')">' +
+            '<div class="card-title">' + card.title + '</div>' +
+            '<div class="card-time">' + timeLabel + '</div>' +
+            '<div class="card-details">' + details + '</div>' +
+          '</div>';
         }).join('');
       }
 
@@ -493,85 +491,70 @@
         let body = '';
 
         if (['coucher', 'reveil-matin', 'sieste-matin', 'sieste-aprem'].includes(type)) {
-          body += \`
-            <div class="time-input">
-              <label>Heure</label>
-              <input type="time" id="event-time" value="\${e.time || ''}">
-            </div>
-          \`;
+          body += '<div class="time-input">' +
+            '<label>Heure</label>' +
+            '<input type="time" id="event-time" value="' + (e.time || '') + '">' +
+          '</div>';
         }
 
-        // Toggles "Aucune sieste" / "Aucun réveil"
         if (type === 'sieste-matin') {
-          body += \`
-            <div class="segment-input">
-              <label>Aucune sieste ce matin</label>
-              <div class="segments">
-                <label>
-                  <input type="checkbox" id="no-nap-toggle" \${e.noNap ? 'checked' : ''}>
-                  Aucune
-                </label>
-              </div>
-            </div>
-          \`;
+          body += '<div class="segment-input">' +
+            '<label>Aucune sieste ce matin</label>' +
+            '<div class="segments">' +
+              '<label>' +
+                '<input type="checkbox" id="no-nap-toggle" ' + (e.noNap ? 'checked' : '') + '>' +
+                'Aucune' +
+              '</label>' +
+            '</div>' +
+          '</div>';
         } else if (type === 'sieste-aprem') {
-          body += \`
-            <div class="segment-input">
-              <label>Aucune sieste cet après-midi</label>
-              <div class="segments">
-                <label>
-                  <input type="checkbox" id="no-nap-toggle" \${e.noNap ? 'checked' : ''}>
-                  Aucune
-                </label>
-              </div>
-            </div>
-          \`;
+          body += '<div class="segment-input">' +
+            '<label>Aucune sieste cet après-midi</label>' +
+            '<div class="segments">' +
+              '<label>' +
+                '<input type="checkbox" id="no-nap-toggle" ' + (e.noNap ? 'checked' : '') + '>' +
+                'Aucune' +
+              '</label>' +
+            '</div>' +
+          '</div>';
         } else if (type === 'reveils') {
-          body += \`
-            <div class="segment-input">
-              <label>Aucun réveil cette nuit</label>
-              <div class="segments">
-                <label>
-                  <input type="checkbox" id="no-wake-toggle" \${e.noWake ? 'checked' : ''}>
-                  Aucun
-                </label>
-              </div>
-            </div>
-          \`;
+          body += '<div class="segment-input">' +
+            '<label>Aucun réveil cette nuit</label>' +
+            '<div class="segments">' +
+              '<label>' +
+                '<input type="checkbox" id="no-wake-toggle" ' + (e.noWake ? 'checked' : '') + '>' +
+                'Aucun' +
+              '</label>' +
+            '</div>' +
+          '</div>';
         }
 
         if (type === 'reveils') {
-          body += \`
-            <div class="number-input">
-              <label>Nombre de réveils</label>
-              <input type="number" id="event-count" min="0" max="10" value="\${e.count || ''}">
-            </div>
-            <div class="time-input">
-              <label>Heure moyenne</label>
-              <input type="time" id="event-time" value="\${e.time || ''}">
-            </div>
-          \`;
+          body += '<div class="number-input">' +
+            '<label>Nombre de réveils</label>' +
+            '<input type="number" id="event-count" min="0" max="10" value="' + (e.count || '') + '">' +
+          '</div>' +
+          '<div class="time-input">' +
+            '<label>Heure moyenne</label>' +
+            '<input type="time" id="event-time" value="' + (e.time || '') + '">' +
+          '</div>';
         } else if (type === 'repas') {
-          body += \`
-            <div class="segment-input">
-              <label>Quantité mangée</label>
-              <div class="segments">
-                <label><input type="radio" name="meal" value="bien" \${e.meal === 'bien' ? 'checked' : ''}> Bien</label>
-                <label><input type="radio" name="meal" value="peu" \${e.meal === 'peu' ? 'checked' : ''}> Peu</label>
-                <label><input type="radio" name="meal" value="rien" \${e.meal === 'rien' ? 'checked' : ''}> Rien</label>
-              </div>
-            </div>
-          \`;
+          body += '<div class="segment-input">' +
+            '<label>Quantité mangée</label>' +
+            '<div class="segments">' +
+              '<label><input type="radio" name="meal" value="bien" ' + (e.meal === 'bien' ? 'checked' : '') + '> Bien</label>' +
+              '<label><input type="radio" name="meal" value="peu" ' + (e.meal === 'peu' ? 'checked' : '') + '> Peu</label>' +
+              '<label><input type="radio" name="meal" value="rien" ' + (e.meal === 'rien' ? 'checked' : '') + '> Rien</label>' +
+            '</div>' +
+          '</div>';
         }
 
-        body += \`
-          <div class="notes-input">
-            <label>Notes</label>
-            <textarea id="event-notes" placeholder="Commentaires...">\${e.notes || ''}</textarea>
-          </div>
-        \`;
+        body += '<div class="notes-input">' +
+          '<label>Notes</label>' +
+          '<textarea id="event-notes" placeholder="Commentaires...">' + (e.notes || '') + '</textarea>' +
+        '</div>';
 
-        document.getElementById('modal-title').textContent = \`Événement : \${type.replace('-', ' ')}\`;
+        document.getElementById('modal-title').textContent = 'Événement : ' + type.replace('-', ' ');
         document.getElementById('modal-body').innerHTML = body;
         document.getElementById('modal').classList.add('active');
       }
@@ -617,7 +600,6 @@
         document.getElementById('modal').classList.remove('active');
       }
 
-      // Met à jour les stats selon la période active
       updateSummary() {
         if (this.statsPeriod === 'day') {
           this.updateSummaryDay();
@@ -628,7 +610,6 @@
         }
       }
 
-      // Stats du jour courant
       updateSummaryDay() {
         let nightMinutes = 0;
         let napsMinutes = 0;
@@ -637,7 +618,7 @@
         const fmt = (m) => {
           const h = Math.floor(m / 60);
           const mm = m % 60;
-          return \`\${h}h \${mm.toString().padStart(2, '0')}m\`;
+          return h + 'h ' + mm.toString().padStart(2, '0') + 'm';
         };
 
         if (this.events.coucher?.time && this.events['reveil-matin']?.time) {
@@ -661,7 +642,6 @@
         document.getElementById('naps-sleep').textContent = fmt(napsMinutes);
         document.getElementById('total-sleep').textContent = fmt(total);
 
-        // Labels jour
         document.getElementById('total-label').textContent = 'Sommeil total';
         document.getElementById('night-label').textContent = 'Nuit';
         document.getElementById('naps-label').textContent = 'Siestes';
@@ -673,7 +653,6 @@
         else badge.textContent = '🔴 Médiocre';
       }
 
-      // Stats sur une période (semaine ou mois)
       updateSummaryPeriod(days, label) {
         const dates = this.getLastNDates(days);
         const results = [];
@@ -682,7 +661,7 @@
         if (!childId) return;
 
         dates.forEach(dateStr => {
-          const key = \`day_\${childId}_\${dateStr}\`;
+          const key = 'day_' + childId + '_' + dateStr;
           const stored = localStorage.getItem(key);
           if (!stored) return;
 
@@ -713,7 +692,7 @@
         const fmt = (m) => {
           const h = Math.floor(m / 60);
           const mm = m % 60;
-          return \`\${h}h \${mm.toString().padStart(2, '0')}m\`;
+          return h + 'h ' + mm.toString().padStart(2, '0') + 'm';
         };
 
         if (!results.length) {
@@ -738,7 +717,6 @@
         document.getElementById('naps-sleep').textContent = fmt(avgNaps);
         document.getElementById('total-sleep').textContent = fmt(avgTotal);
 
-        // Labels moyennes
         document.getElementById('total-label').textContent = 'Sommeil total moyen';
         document.getElementById('night-label').textContent = 'Nuit moyenne';
         document.getElementById('naps-label').textContent = 'Siestes moyennes';
@@ -750,7 +728,6 @@
         else badge.textContent = '🔴 Médiocre';
       }
 
-      // Retourne les N derniers jours
       getLastNDates(n) {
         const dates = [];
         const base = new Date(this.currentDate);
@@ -781,7 +758,7 @@
           themeToApply = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
         }
         document.documentElement.setAttribute('data-theme', themeToApply);
-        const radio = document.querySelector(\`input[name="theme"][value="\${this.theme}"]\`);
+        const radio = document.querySelector('input[name="theme"][value="' + this.theme + '"]');
         if (radio) radio.checked = true;
       }
 

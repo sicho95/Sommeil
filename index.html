@@ -76,16 +76,21 @@
     <!-- PARAMÈTRES -->
     <section class="tab-content" id="tab-settings">
       <div class="settings-section">
-        <h2>👶 Gestion des enfants</h2>
-        <div class="children-list" id="children-list"></div>
-        <form id="child-form" class="form-card">
-          <input type="text" id="child-name" placeholder="Nom de l'enfant *" required>
-          <input type="number" id="child-age" placeholder="Âge (mois)" min="0" max="60">
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Ajouter enfant</button>
-            <button type="button" class="btn-secondary" id="child-cancel">Annuler</button>
-          </div>
-        </form>
+        <h2 class="collapsible-header" onclick="app.toggleCollapse('children-section')">
+          <span>👶 Gestion des enfants</span>
+          <span class="collapse-icon" id="children-section-icon">▶</span>
+        </h2>
+        <div class="collapsible-content collapsed" id="children-section">
+          <div class="children-list" id="children-list"></div>
+          <form id="child-form" class="form-card">
+            <input type="text" id="child-name" placeholder="Nom de l'enfant *" required>
+            <input type="number" id="child-age" placeholder="Âge (mois)" min="0" max="60">
+            <div class="form-actions">
+              <button type="submit" class="btn-primary">Ajouter enfant</button>
+              <button type="button" class="btn-secondary" id="child-cancel">Annuler</button>
+            </div>
+          </form>
+        </div>
       </div>
 
       <div class="settings-section">
@@ -101,9 +106,10 @@
           </button>
           <button class="theme-tab active" data-theme="auto">
             <span class="theme-icon">🔄</span>
-            <span class="theme-label">Préférences système</span>
+            <span class="theme-label">Auto</span>
           </button>
         </div>
+        <p class="theme-hint">Le thème s'adapte à tes préférences système</p>
       </div>
 
       <div class="settings-section">
@@ -777,6 +783,19 @@
         window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
           if (this.theme === 'auto') this.applyTheme();
         });
+
+    toggleCollapse(sectionId) {
+      const content = document.getElementById(sectionId);
+      const icon = document.getElementById(sectionId + '-icon');
+
+      if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        icon.textContent = '▼';
+      } else {
+        content.classList.add('collapsed');
+        icon.textContent = '▶';
+      }
+    }
       }
     }
 

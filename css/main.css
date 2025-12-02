@@ -167,6 +167,11 @@ body {
 
 .tab-content.active { display: block; }
 
+/* Tab-content de ParamÃ¨tres scrollable */
+#tab-settings {
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 .date-nav {
   display: flex;
   align-items: center;
@@ -506,6 +511,39 @@ body {
   margin-bottom: 28px;
 }
 
+/* Sections collapsibles dans ParamÃ¨tres */
+.collapsible-header {
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.collapsible-header:hover {
+  opacity: 0.8;
+}
+
+.collapse-icon {
+  font-size: 14px;
+  transition: transform 0.3s ease;
+  color: var(--text-muted);
+}
+
+.collapsible-content {
+  max-height: 2000px;
+  overflow: hidden;
+  transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+  opacity: 1;
+  margin-top: 14px;
+}
+
+.collapsible-content.collapsed {
+  max-height: 0;
+  opacity: 0;
+  margin-top: 0;
+}
 .settings-section h2 {
   margin-bottom: 14px;
   font-size: 18px;

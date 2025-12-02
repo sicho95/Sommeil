@@ -42,20 +42,21 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
   background: var(--bg-main);
-  min-height: 100vh;
+  height: 100vh;
   color: var(--text-main);
   line-height: 1.5;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 .app-root {
   max-width: 430px;
   margin: 0 auto;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
   box-shadow: var(--shadow-light);
+  overflow: hidden;
 }
 
 /* Header */
@@ -411,33 +412,93 @@ body {
 /* Onglets stats pÃƒÂ©riode (Jour/Semaine/Mois) */
 .stats-tabs {
   display: flex;
-  background: var(--bg-card);
-  border-radius: 12px;
+  background: transparent;
+  border-radius: 16px;
   overflow: hidden;
   margin-top: 20px;
-  border: 1px solid var(--button-border);
-  box-shadow: var(--shadow-light);
+  gap: 10px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .stats-tab {
   flex: 1;
-  padding: 14px 16px;
+  padding: 10px 16px;
   border: none;
   background: transparent;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--text-main);
+  color: var(--text-muted);
   cursor: pointer;
+  border-radius: 16px;
   transition: all 0.3s ease;
 }
 
 .stats-tab.active {
-  background: linear-gradient(135deg, var(--primary-blue), var(--primary-purple));
-  color: white;
+  background: var(--button-bg);
+  color: var(--text-main);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
 }
 
 .stats-tab:hover:not(.active) {
+  background: rgba(0,0,0,0.05);
+}
+
+[data-theme='dark'] .stats-tab:hover:not(.active) {
+  background: rgba(255,255,255,0.05);
+}
+
+/* Boutons de sÃ©lection de thÃ¨me - Style identique aux stats-tabs */
+.theme-tabs {
+  display: flex;
+  background: transparent;
+  border-radius: 16px;
+  overflow: hidden;
+  gap: 10px;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  margin-bottom: 12px;
+}
+
+.theme-tab {
+  flex: 1;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 16px;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.theme-tab .theme-icon {
+  font-size: 20px;
+}
+
+.theme-tab .theme-label {
+  font-size: 13px;
+}
+
+.theme-tab.active {
   background: var(--button-bg);
+  color: var(--text-main);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.theme-tab:hover:not(.active) {
+  background: rgba(0,0,0,0.05);
+}
+
+[data-theme='dark'] .theme-tab:hover:not(.active) {
+  background: rgba(255,255,255,0.05);
 }
 
 /* ParamÃƒÂ¨tres */

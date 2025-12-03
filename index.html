@@ -508,7 +508,7 @@
         const e = this.events[type] || {};
         let body = '';
 
-        if (['coucher', 'reveil-matin', 'sieste-matin', 'sieste-aprem'].includes(type)) {
+        if (['coucher', 'reveil-matin', 'sieste-matin', 'sieste-aprem', 'repas'].includes(type)) {
           body += '<div class="time-input">' +
             '<label>Heure</label>' +
             '<input type="time" id="event-time" value="' + (e.time || '') + '">' +
@@ -557,9 +557,7 @@
             '<input type="time" id="event-time" value="' + (e.time || '') + '">' +
           '</div>';
         } else if (type === 'repas') {
-          body += '<div class="time-input">' +
-            '<label>Heure</label>' +
-            '<div class="segment-input">' +
+          body += '<div class="segment-input">' +
             '<label>Quantité mangée</label>' +
             '<div class="segments">' +
               '<label><input type="radio" name="meal" value="bien" ' + (e.meal === 'bien' ? 'checked' : '') + '> Bien</label>' +

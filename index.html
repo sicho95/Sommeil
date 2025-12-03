@@ -592,6 +592,8 @@
           }
         } else if (this.currentEventType === 'repas') {
           e.meal = document.querySelector('input[name="meal"]:checked')?.value || '';
+          // Sauvegarde de l'heure du repas
+          e.time = document.getElementById('event-time')?.value || '';
         } else if (this.currentEventType === 'sieste-matin' || this.currentEventType === 'sieste-aprem') {
           const noNap = document.getElementById('no-nap-toggle')?.checked || false;
           e.noNap = noNap;

@@ -557,7 +557,9 @@
             '<input type="time" id="event-time" value="' + (e.time || '') + '">' +
           '</div>';
         } else if (type === 'repas') {
-          body += '<div class="segment-input">' +
+          body += '<div class="time-input">' +
+            '<label>Heure</label>' +
+            '<div class="segment-input">' +
             '<label>Quantité mangée</label>' +
             '<div class="segments">' +
               '<label><input type="radio" name="meal" value="bien" ' + (e.meal === 'bien' ? 'checked' : '') + '> Bien</label>' +
